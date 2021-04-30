@@ -5,6 +5,7 @@ import base64
 from PIL import Image
 from io import BytesIO
 from cloud_image_ext import colour_ext, cloud_classification
+import numpy as np
 
 class Model_Pipeline(object):
     def __init__(self, lat, longitude, time, image_string, duration):
@@ -12,10 +13,13 @@ class Model_Pipeline(object):
         self.lat = lat
         self.long = longitude
         self.time = time
-        self.image = Image.open(BytesIO(base64.b64decode(image_string)))
-        self.temp_model, self.press_model, self.humid_model = (None)*3
+        self.image = Image.open(BytesIO(base64.b64decode(image_string))) if image_string is not None else None
+        # self.temp_model = None
+        # self.press_model= None
+        # self.humid_model= None
         #self.wind_speed_model = None
-        self.weath_model = None
+        # self.weath_model = None
+        self.model_initial()
 
     def model_initial(self):
         self.temp_model = joblib.load("models/temperature_model.joblib.dat")
@@ -36,11 +40,11 @@ class Model_Pipeline(object):
         self.feat.append(temp_date.dt.weekofyear)
 
     def get_feat(self):
-        temperature = self.temp_model.predict(self.feat)
+        temperature = self.temp_model.predict(np.array(self.feat))
         self.feat.append(temperature)
-        humidity = self.humid_model.predict(self.feat)
+        humidity = self.humid_model.predict(np.array(self.feat))
         self.feat.append(humidity)
-        pressure = self.press_model.predict(self.feat)
+        pressure = self.press_model.predict(np.array(self.feat))
         self.feat.append(pressure)
         #wind_speed = self.wind_speed_model.predict(self.feat)
         #self.feat.append(wind_speed)
@@ -50,13 +54,13 @@ class Model_Pipeline(object):
         final_color = colour_init.percent_values()
         cloud_type_init = cloud_classification.Cloud_Classification(self.image)
         final_cloud_type = cloud_type_init.cloud_classify()
-        pca_single_color
+        # pca_single_color
         #Algorithm to pca into single color value
 
     def forecast_weath(self):
         #Forecast general weather conditions for a long term perspective
         self.get_feat()
-        weather_desc = self.weath_model.predict(self.feat)
+        weather_desc = self.weath_model.predict(np.array(self.feat))
         return weather_desc
 
     def forecast_micro_weath(self):
