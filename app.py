@@ -6,7 +6,7 @@ from flask import Flask, render_template, request,jsonify
 from json import loads
 from datetime import datetime
 from WeatherModel import api_model_pipeline
-from get_time_till_next_day import get_prediction_times
+from get_intervals_from_time import get_prediction_times
 
 # need to be config variables or loaded from config
 redis_host = "frizzle-redis-cluster.zcgu4a.ng.0001.aps1.cache.amazonaws.com"
@@ -43,8 +43,8 @@ def get_prediction():
             except Exception as e:
                 print(e)
 
-        for i in forecasted_weather:
-             print(i,forecasted_weather[i])
+        # for i in forecasted_weather:
+        #      print(i,forecasted_weather[i])
         # print(forecasted_weather)
         return jsonify(forecasted_weather)
 
