@@ -49,18 +49,19 @@ class Model_Pipeline(object):
         # print(np.array(self.feat))
         pressure = self.press_model.predict(np.array(self.feat).reshape(1,10))
         self.feat.append(pressure[0])
-        print(self.feat)
+        #print(self.feat)
         # print(np.array(self.feat))
         #wind_speed = self.wind_speed_model.predict(self.feat)
         #self.feat.append(wind_speed)
 
-    def get_feat_from_image(self):
+    def get_feat_from_image(self,image):
         pca = PCA(n_components = 1)
-        colour_init = colour_ext_v3.Image_Colour_Extract(self.image)
-        final_color = colour_init.NNPerc()
+        colour_init = colour_ext_v3.Image_Colour_Extract(image)
+        final_color = colour_init.NNperc()
         #cloud_type_init = cloud_classification.Cloud_Classification(self.image)
         #final_cloud_type = cloud_type_init.cloud_classify()
-        pca_single_color = pca.fit_transform(final_color.values())
+        final_color = np.array(list(final_color.values())).reshape(-1,1)
+        pca_single_color = pca.fit_transform(final_color)
         self.feat.append(pca_single_color)
         #Algorithm to pca into single color value
 
@@ -73,8 +74,10 @@ class Model_Pipeline(object):
         weather_desc = self.weath_model.predict(np.array(self.feat).reshape(1,12))
         return weather_desc
 
-    def forecast_micro_weath(self):
-        self.get_feat_from_image()
+    def forecast_micro_weath(self,time):
+        self.time_feat(time)
+        self.get_feat()
+        self.get_feat_from_image(self.image) #room for optimisation ; is repeatedly called
         weather_desc = self.weath_model.predict(np.array(self.feat).reshape(1,12))
         return weather_desc
         #Insert conditions for forecast of micro-weather conditions
