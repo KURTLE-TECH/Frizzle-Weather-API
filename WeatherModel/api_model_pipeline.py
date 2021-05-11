@@ -70,7 +70,7 @@ class Model_Pipeline(object):
         pressure = self.press_model.predict(self.feat)
 
         self.feat.insert(7,"Pressure",[pressure[0]],True)
-        print(self.feat)
+        # print(self.feat)
         #wind_speed = self.wind_speed_model.predict(self.feat)
         #self.feat.append(wind_speed)
 
@@ -81,8 +81,10 @@ class Model_Pipeline(object):
         #cloud_type_init = cloud_classification.Cloud_Classification(self.image)
         #final_cloud_type = cloud_type_init.cloud_classify()
         # final_color = np.array(list(final_color.values())).reshape(-1,1)
-        # print(final_color)
-        pca_single_color = pca.fit_transform([final_color.values()])
+        # print(final_color)        
+        final_color = pd.DataFrame.from_dict(final_color)
+        # print(final_color)        
+        pca_single_color = pca.fit_transform(final_color)
         print(pca_single_color)
         self.feat.insert(11,"colors",pca_single_color,True)
         #Algorithm to pca into single color value

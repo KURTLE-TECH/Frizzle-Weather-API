@@ -26,7 +26,7 @@ class Image_Colour_Extract(object):
 	def perc_dict(self,dict1):
 		dict_1 = dict()
 		for i in dict1.items():
-			dict_1[i[0]] = (i[1]/self.pixel_count)*100
+			dict_1[i[0]] = [(i[1]/self.pixel_count)*100]
 		return dict_1
 	
 	def process(self, color_closest):
