@@ -2,12 +2,13 @@ import random
 import boto3
 import redis
 import joblib
+import base64
 from flask import Flask, render_template, request,jsonify
 from json import loads
 from datetime import datetime
 from WeatherModel import api_model_pipeline
 from get_intervals_from_time import get_prediction_times
-
+encoded_string = ""
 # need to be config variables or loaded from config
 redis_host = "frizzle-redis-cluster.zcgu4a.ng.0001.aps1.cache.amazonaws.com"
 redis_port = 6379
@@ -31,12 +32,17 @@ def get_prediction():
     if request.method=="GET":
         try:
             client_data = loads(request.data)
+            type = request.args.get('type')
             # print(client_data)
         except Exception as e:
             print(e)
         prediction_times = get_prediction_times()
         forecasted_weather = dict()
-        model = api_model_pipeline.Model_Pipeline(None,models)
+        if type=="default":
+            model = api_model_pipeline.Model_Pipeline(None,models)
+        else:
+            return "Image not found"
+        
         for time in prediction_times:
             try:                    
                 forecasted_weather[time.strftime(format="%y-%m-%d %H:%M:%S")] = weather_condition[model.forecast_weath(time)[0]]
