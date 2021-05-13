@@ -32,13 +32,13 @@ def get_prediction():
     if request.method=="GET":
         try:
             client_data = loads(request.data)
-            type = request.args.get('type')
+            request_type = request.args.get('type')
             # print(client_data)
         except Exception as e:
             print(e)
         prediction_times = get_prediction_times()
         forecasted_weather = dict()
-        if type=="default":
+        if request_type=="default":
             model = api_model_pipeline.Model_Pipeline(None,models)
         else:
             return "Image not found"
