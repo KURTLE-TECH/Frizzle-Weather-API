@@ -7,8 +7,8 @@ from flask import Flask, render_template, request,jsonify
 from json import loads
 from datetime import datetime
 from WeatherModel import api_model_pipeline
-from get_intervals_from_time import get_prediction_times
-encoded_string = ""
+from get_data import get_prediction_times,get_closest_node
+from database import DynamodbHandler 
 # need to be config variables or loaded from config
 redis_host = "frizzle-redis-cluster.zcgu4a.ng.0001.aps1.cache.amazonaws.com"
 redis_port = 6379
@@ -36,13 +36,19 @@ def get_prediction():
             # print(client_data)
         except Exception as e:
             print(e)
-        prediction_times = get_prediction_times()
+        location = dict()
+        location['lat'] = client_data['lat']
+        location['lng'] = client_data['lng']
         forecasted_weather = dict()
-        if request_type=="default":
+        if request_type=="detailed":
+            closest_node =  get_closest_node(location)
+            print("closest_node: ",closest_node)
+            print(redis_endpoint[closest_node])
+            # print(sizeof(redis))       
             model = api_model_pipeline.Model_Pipeline(None,models)
-        else:
-            return "Image not found"
-        
+        elif request_type=="default":
+            model = api_model_pipeline.Model_Pipeline(None,models)
+        prediction_times = get_prediction_times()
         for time in prediction_times:
             try:                    
                 forecasted_weather[time.strftime(format="%y-%m-%d %H:%M:%S")] = weather_condition[model.forecast_weath(time)[0]]
