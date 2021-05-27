@@ -49,8 +49,14 @@ def get_prediction():
             closest_node =  get_closest_node(location)
             # print("closest_node: ",closest_node)
             if closest_node is not None:
-                image = loads(redis_endpoint[closest_node])['picture']            
-                model = api_model_pipeline.Model_Pipeline(image,models)
+                try:                
+                    image = loads(redis_endpoint[closest_node])['picture']            
+                    model = api_model_pipeline.Model_Pipeline(image,models)
+                except Exception:
+                    
+                    # pure testing only
+                    image = loads(redis_endpoint["7a317703-f266-4329-8bf8-7aedbcab92d8"])['picture']            
+                    model = api_model_pipeline.Model_Pipeline(None,models) 
             else:
                 model = api_model_pipeline.Model_Pipeline(None,models)
         elif request_type=="default":
@@ -66,6 +72,7 @@ def get_prediction():
         #      print(i,forecasted_weather[i])
         # print(forecasted_weather)
         return jsonify(forecasted_weather)
+@app.route
 
 def load_models():
     models['temperature'] = joblib.load("models/temperature_model.joblib.dat")
