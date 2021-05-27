@@ -9,7 +9,9 @@ from datetime import datetime
 from WeatherModel import api_model_pipeline
 from get_data import get_prediction_times,get_closest_node
 from database import DynamodbHandler 
-# need to be config variables or loaded from config
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+
+# external configuration; needs to be loaded from a json file
 redis_host = "frizzle-redis-cluster.zcgu4a.ng.0001.aps1.cache.amazonaws.com"
 redis_port = 6379
 redis_endpoint = redis_cluster_endpoint = redis.Redis(
@@ -19,7 +21,10 @@ db=0)
 models = dict()
 weather_condition={0:"Sunny",1:"Cloudy",2:"Rainy"}
 
+#app initialisation
 app = Flask(__name__)
+
+
 @app.route('/')
 def hello_world():
     if request.method == "GET":
@@ -42,10 +47,12 @@ def get_prediction():
         forecasted_weather = dict()
         if request_type=="detailed":
             closest_node =  get_closest_node(location)
-            print("closest_node: ",closest_node)
-            print(redis_endpoint[closest_node])
-            # print(sizeof(redis))       
-            model = api_model_pipeline.Model_Pipeline(None,models)
+            # print("closest_node: ",closest_node)
+            if closest_node is not None:
+                image = loads(redis_endpoint[closest_node])['picture']            
+                model = api_model_pipeline.Model_Pipeline(image,models)
+            else:
+                model = api_model_pipeline.Model_Pipeline(None,models)
         elif request_type=="default":
             model = api_model_pipeline.Model_Pipeline(None,models)
         prediction_times = get_prediction_times()
@@ -66,7 +73,10 @@ def load_models():
     models['humidity'] = joblib.load("models/humidity_model.joblib.dat")
     #self.wind_speed_model = joblib.load("models/wind_speed_model.joblib.dat")
     models['weather'] = joblib.load("models/weath_model.joblib.dat")
-     
-if __name__ == "__main__":
-    load_models()
+#remove app.wsgi_app
+
+ 
+load_models()
+if __name__ == "__main__":     
     app.run(debug=True)
+    

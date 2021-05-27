@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta,timezone
 import pytz
 from database import DynamodbHandler as db
+from math import sin,cos,asin,sqrt,radians
+from collections import defaultdict
 #time_zone = timezone(offset=timedelta(hours=5,minutes=30),name="Asia/Kolkata")
 
 #start, end, intervals
@@ -21,18 +23,27 @@ def get_prediction_times():
         # print(i)
     return prediction_times
 
-def get_distance(location,node_location):
-    location = {i:float(location[i]) for i in location.keys()}
-    node_location = {i:float(node_location[i]) for i in node_location.keys()}
-    
-    return ((location['lat']-node_location['lat'])**2+(location['lng']-node_location['lng'])**2)**0.5
+def get_distance(node_location,location):
+    #does not take into account
+    r = 6371    
+    location = {i:radians(float(location[i])) for i in location.keys()}
+    node_location = {i:radians(float(node_location[i])) for i in node_location.keys()}
+    lat1 = node_location['lat']
+    lat2 = location['lat']
+    dlon = location['lng'] - node_location['lng'] 
+    dlat = location['lat'] - node_location['lat']     
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))     
+    return c * r
+    #cannot use euclidean distance
+    #return ((location['lat']-node_location['lat'])**2+(location['lng']-node_location['lng'])**2)**0.5 
     
 def get_closest_node(location):
     db_handler = db.DynamodbHandler()
     response = db_handler.view_database('Nodes_Available')
     if 'Items' in response.keys():
     #model is default model        
-        distances=dict()
+        distances=defaultdict(None)
         for node in response['Items']:
             node_location = dict()
             node_location['lat'] = node['lat']['S'] 
@@ -47,3 +58,4 @@ def get_closest_node(location):
 
     elif 'status' in response.keys():
         return None
+# print(get_distance(loc2,loc1))
