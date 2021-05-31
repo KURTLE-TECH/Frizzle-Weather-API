@@ -33,26 +33,28 @@ app_logger.addHandler(handler)
 
 @app.route('/',methods=["GET","POST"])
 def hello_world():
+    curr_time = datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f")
     if request.method == "GET":
-        app_logger.info("Address: %s - Request Path %s - Time %s",request.remote_addr,request.path,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"))
+        app_logger.info("Address: %s - Request Path %s - Time %s",request.remote_addr,request.path,curr_time)
         return 'Hello, World!'
     else:
-        app_logger.error("Address: %s - Request Path %s - Time %s - Reason: Wrong method",request.remote_addr,request.path,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"))
+        app_logger.error("Address: %s - Request Path %s - Time %s - Reason: Wrong method",request.remote_addr,request.path,curr_time)
         return "Root method uses only GET, Please try again"
 
 @app.route('/get_prediction',methods=["GET"])
-def get_prediction():
-    if request.method=="GET":
+def get_prediction():    
+        curr_time = datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f")
         try:
             client_data = loads(request.data)
             request_type = request.args.get('type')
             # print(client_data)
         except Exception as e:
-            app_logger.error("Address: %s - Request Path %s - Time %s - Reason: %s",request.remote_addr,request.path,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"),e.__str__)
+            app_logger.error("Address: %s - Request Path %s - Time %s - Reason: %s",request.remote_addr,request.path,curr_time,e.__str__)
             return jsonify({"Status":"Failed","Reason":str(e)})
         location = dict()
         location['lat'] = client_data['lat']
         location['lng'] = client_data['lng']
+        
         forecasted_weather = dict()
         if request_type=="detailed":
             closest_node =  get_closest_node(location)
@@ -74,12 +76,9 @@ def get_prediction():
             try:                    
                 forecasted_weather[time.strftime(format="%y-%m-%d %H:%M:%S")] = weather_condition[model.forecast_weath(time)[0]]
             except Exception as e:
-                app_logger.error("Address: %s - Request Path %s - Time %s - Reason: %s",request.remote_addr,request.path,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"),e.__str__)                
-                return jsonify({"Status":"Failed","Reason":e.__str__})
-        # for i in forecasted_weather:
-        #      print(i,forecasted_weather[i])
-        # print(forecasted_weather)
-        app_logger.info("Address: %s - Request Path - Type: %s - Time %s",request.remote_addr,request.path,request_type,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"))
+                app_logger.error("Address: %s - Request Path %s - Time %s - Reason: %s",request.remote_addr,request.path,curr_time,str(e))                
+                return jsonify({"Status":"Failed","Reason":str(e)})        
+        app_logger.info("Address: %s - Request Path %s - Type: %s - Time %s",request.remote_addr,request.path,request_type,curr_time)
         return jsonify(forecasted_weather)
 
 def load_models():
