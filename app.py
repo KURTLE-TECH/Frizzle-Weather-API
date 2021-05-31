@@ -9,7 +9,7 @@ from datetime import datetime
 from WeatherModel import api_model_pipeline
 from get_data import get_prediction_times,get_closest_node
 from database import DynamodbHandler 
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
+import logging
 
 # external configuration; needs to be loaded from a json file
 redis_host = "frizzle-redis-cluster.zcgu4a.ng.0001.aps1.cache.amazonaws.com"
@@ -23,13 +23,21 @@ weather_condition={0:"Sunny",1:"Cloudy",2:"Rainy"}
 
 #app initialisation
 app = Flask(__name__)
+logging.basicConfig(filename='server.log',filemode="w",level=logging.DEBUG)
+formatter = logging.Formatter("Level:%(levelname)s %(name)s : %(message)s")
+handler = logging.FileHandler("requests.log",mode="w")        
+handler.setFormatter(formatter)
+app_logger = logging.getLogger("requests")
+app_logger.setLevel(logging.INFO)
+app_logger.addHandler(handler)
 
-
-@app.route('/')
+@app.route('/',methods=["GET","POST"])
 def hello_world():
     if request.method == "GET":
+        app_logger.info("Address: %s - Request Path %s - Time %s",request.remote_addr,request.path,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"))
         return 'Hello, World!'
     else:
+        app_logger.error("Address: %s - Request Path %s - Time %s - Reason: Wrong method",request.remote_addr,request.path,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"))
         return "Root method uses only GET, Please try again"
 
 @app.route('/get_prediction',methods=["GET"])
@@ -40,7 +48,8 @@ def get_prediction():
             request_type = request.args.get('type')
             # print(client_data)
         except Exception as e:
-            print(e)
+            app_logger.error("Address: %s - Request Path %s - Time %s - Reason: %s",request.remote_addr,request.path,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"),e.__str__)
+            return jsonify({"Status":"Failed","Reason":str(e)})
         location = dict()
         location['lat'] = client_data['lat']
         location['lng'] = client_data['lng']
@@ -52,8 +61,7 @@ def get_prediction():
                 try:                
                     image = loads(redis_endpoint[closest_node])['picture']            
                     model = api_model_pipeline.Model_Pipeline(image,models)
-                except Exception:
-                    
+                except Exception:                    
                     # pure testing only
                     image = loads(redis_endpoint["7a317703-f266-4329-8bf8-7aedbcab92d8"])['picture']            
                     model = api_model_pipeline.Model_Pipeline(None,models) 
@@ -66,13 +74,13 @@ def get_prediction():
             try:                    
                 forecasted_weather[time.strftime(format="%y-%m-%d %H:%M:%S")] = weather_condition[model.forecast_weath(time)[0]]
             except Exception as e:
-                print(e)
-
+                app_logger.error("Address: %s - Request Path %s - Time %s - Reason: %s",request.remote_addr,request.path,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"),e.__str__)                
+                return jsonify({"Status":"Failed","Reason":e.__str__})
         # for i in forecasted_weather:
         #      print(i,forecasted_weather[i])
         # print(forecasted_weather)
+        app_logger.info("Address: %s - Request Path - Type: %s - Time %s",request.remote_addr,request.path,request_type,datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f"))
         return jsonify(forecasted_weather)
-@app.route
 
 def load_models():
     models['temperature'] = joblib.load("models/temperature_model.joblib.dat")
