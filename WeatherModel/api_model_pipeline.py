@@ -61,15 +61,15 @@ class Model_Pipeline(object):
         
     def get_feat(self):
         
-        temperature = self.temp_model.predict(self.feat)
+        self.temperature = self.temp_model.predict(self.feat)
         
         # self.feat['Temperature'] = temperature[0]   
-        self.feat.insert(7,"Temperature",[temperature[0]],True)
-        humidity = self.humid_model.predict(self.feat)
-        self.feat.insert(7,"Humidity",[humidity[0]],True)
-        pressure = self.press_model.predict(self.feat)
+        self.feat.insert(7,"Temperature",[self.temperature[0]],True)
+        self.humidity = self.humid_model.predict(self.feat)
+        self.feat.insert(7,"Humidity",[self.humidity[0]],True)
+        self.pressure = self.press_model.predict(self.feat)
 
-        self.feat.insert(7,"Pressure",[pressure[0]],True)
+        self.feat.insert(7,"Pressure",[self.pressure[0]],True)
         # print(self.feat)
         #wind_speed = self.wind_speed_model.predict(self.feat)
         #self.feat.append(wind_speed)
