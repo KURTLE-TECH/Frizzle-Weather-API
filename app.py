@@ -59,8 +59,8 @@ def get_prediction():
 
     forecasted_weather = dict()
     if request_type == "detailed":
-        # closest_node = get_closest_node(location)
-        closest_node = None
+        closest_node = get_closest_node(location)
+        # closest_node = None
         # print("closest_node: ",closest_node)
         if closest_node is not None:            
             try:
