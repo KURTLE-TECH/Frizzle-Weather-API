@@ -41,16 +41,21 @@ def get_distance(node_location,location):
 def get_closest_node(location):
     db_handler = db.DynamodbHandler()
     response = db_handler.view_database('Nodes_Available')
+    print(location)
+    print(response)
     if 'Items' in response.keys():
     #model is default model        
         distances=defaultdict(None)
         for node in response['Items']:
             node_location = dict()
-            node_location['lat'] = node['lat']['S'] 
-            node_location['lng'] = node['lng']['S']
-            if node_location['lng'] !='' and node_location['lng'] != '':
-                distance = get_distance(location,node_location)
-                distances[distance] = node['Device ID']['S'] 
+            try:
+                node_location['lat'] = node['lat']['S'] 
+                node_location['lng'] = node['lng']['S']
+                if node_location['lat'] !='' and node_location['lng'] != '':
+                    distance = get_distance(location,node_location)
+                    distances[distance] = node['Device ID']['S'] 
+            except Exception:
+                continue    
             
         return distances[min(distances.keys())]
         

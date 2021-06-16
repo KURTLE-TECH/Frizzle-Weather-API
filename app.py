@@ -69,7 +69,7 @@ def get_prediction():
             except Exception:
                 # pure testing only
                 image = loads(
-                    redis_endpoint["7a317703-f266-4329-8bf8-7aedbcab92d8"])['picture']
+                    redis_endpoint["7a317703-f266-4329-8bf8-7aedbcab92d8"])['picture'] ## need to change this
                 model = api_model_pipeline.Model_Pipeline(None, models)
         else:
             model = api_model_pipeline.Model_Pipeline(None, models)
