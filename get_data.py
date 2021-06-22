@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta,timezone
+import logging
 import pytz
 from database import DynamodbHandler as db
 from math import sin,cos,asin,sqrt,radians
@@ -77,4 +78,10 @@ def get_closest_node(location):
 
     elif 'status' in response.keys():
         return None
-# print(get_distance(loc2,loc1))
+
+def get_log(log_level,request,error):
+    curr_time = datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f")
+    if log_level==logging.INFO or log_level==logging.WARN :
+        return f"Address: {request.remote_addr}%s - Request Path {request.path} - Time {curr_time}"                        
+    elif log_level == logging.ERROR:
+        return f"Address: {request.remote_addr}%s - Request Path: {request.path} - Time: {curr_time} - Reason: {error}"
