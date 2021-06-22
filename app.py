@@ -10,6 +10,7 @@ from WeatherModel import api_model_pipeline
 from get_data import get_prediction_times, get_closest_node
 from database import DynamodbHandler
 import logging
+import pytz
 
 # external configuration; needs to be loaded from a json file
 redis_host = "frizzle-redis-cluster.zcgu4a.ng.0001.aps1.cache.amazonaws.com"
@@ -60,46 +61,58 @@ def get_prediction():
     forecasted_weather = dict()
     if request_type == "detailed":
         closest_node = get_closest_node(location)
-        # closest_node = None
-        # print("closest_node: ",closest_node)
+        
         if closest_node is not None:            
             try:
                 image = loads(redis_endpoint[closest_node])['picture']
                 model = api_model_pipeline.Model_Pipeline(image, models)
             except Exception:
                 # pure testing only
-                image = loads(
-                    redis_endpoint["7a317703-f266-4329-8bf8-7aedbcab92d8"])['picture'] ## need to change this
+                # image = loads(
+                #     redis_endpoint["7a317703-f266-4329-8bf8-7aedbcab92d8"])['picture'] ## need to change this
                 model = api_model_pipeline.Model_Pipeline(None, models)
         else:
             model = api_model_pipeline.Model_Pipeline(None, models)
         
-        today = {"temperature":{},"pressure":{},"humidity":{},"forecast":{}}
-        prediction_times = get_prediction_times()
-        for time in prediction_times:
-            time_string = time.strftime(
-                format="%y-%m-%d %H:%M:%S")
-            today["forecast"][time_string] = weather_condition[model.forecast_weath(time)[0]]
-            today["temperature"][time_string] = str(model.temperature[0])
-            today["humidity"][time_string] = str(model.humidity[0])
-            today["pressure"][time_string] = str(model.pressure[0])
-        return jsonify(today)   
+        # get the next 7 days
+        all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=7,time_zone="Asia/Kolkata")
+
+        #get the times for each day
+        all_times = {}
+        forecasted_weather = dict()
+        for day in all_days:
+            if datetime.now(tz=pytz.timezone("Asia/Kolkata")).day == day.day:
+                all_times[day] = get_prediction_times(start_day=datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=30,days=None,time_zone="Asia/Kolkata")
+            else:
+                all_times[day] = get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata")
+        
+            # data structure for the prediction
+            day_string = day.strftime("%y-%m-%d")
+            forecasted_weather[day_string] = {"temperature":{},"pressure":{},"humidity":{},"forecast":{}}            
+                
+            for time in all_times[day]:
+                time_string = time.strftime(format="%y-%m-%d %H:%M:%S")
+                forecasted_weather[day_string]["forecast"][time_string] = weather_condition[model.forecast_weath(time)[0]]
+                forecasted_weather[day_string]["temperature"][time_string] = str(model.temperature[0])
+                forecasted_weather[day_string]["humidity"][time_string] = str(model.humidity[0])
+                forecasted_weather[day_string]["pressure"][time_string] = str(model.pressure[0])
+        return jsonify(forecasted_weather)
+                
 
     elif request_type == "default":
-        model = api_model_pipeline.Model_Pipeline(None, models)
-    prediction_times = get_prediction_times()
-    for time in prediction_times:
-        try:
-            forecasted_weather[time.strftime(
-                format="%y-%m-%d %H:%M:%S")] = weather_condition[model.forecast_weath(time)[0]]
+        model = api_model_pipeline.Model_Pipeline(None, models)        
+        prediction_times = get_prediction_times(start_day = datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=30,days=None,time_zone="Asia/Kolkata")
 
-        except Exception as e:
-            app_logger.error("Address: %s - Request Path %s - Time %s - Reason: %s",
-                             request.remote_addr, request.path, curr_time, str(e))
-            return jsonify({"Status": "Failed", "Reason": str(e)})
-    app_logger.info("Address: %s - Request Path %s - Type: %s - Time %s",
-                    request.remote_addr, request.path, request_type, curr_time)
-    return jsonify(forecasted_weather)
+        for time in prediction_times:
+            try:
+                forecasted_weather[time.strftime(format="%y-%m-%d %H:%M:%S")] = weather_condition[model.forecast_weath(time)[0]]
+            except Exception as e:
+                app_logger.error("Address: %s - Request Path %s - Time %s - Reason: %s",
+                                request.remote_addr, request.path, curr_time, str(e))
+                return jsonify({"Status": "Failed", "Reason": str(e)})
+        app_logger.info("Address: %s - Request Path %s - Type: %s - Time %s",
+                        request.remote_addr, request.path, request_type, curr_time)
+        return jsonify(forecasted_weather)
 
 
 def load_models():

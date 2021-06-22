@@ -6,22 +6,36 @@ from collections import defaultdict
 #time_zone = timezone(offset=timedelta(hours=5,minutes=30),name="Asia/Kolkata")
 
 #start, end, intervals
-def get_prediction_times():
-    time_zone = pytz.timezone('Asia/Kolkata')
-    # now = datetime(year=2017,month=12,day=31,hour=11,minute=30,second=10,tzinfo=time_zone)
-    now = datetime.now(tz=time_zone)
-    tomorrow = now+timedelta(days=1)
-    tomorrow = tomorrow.replace(hour=0,minute=0,second=0,microsecond=0,tzinfo=time_zone)
-    prediction_times = list()
-    required_time = now
-    # print("Now:",type(now))
-    # print("tomorrow:",type(tomorrow))
-    while required_time<tomorrow:
-        prediction_times.append(required_time)
-        required_time+=timedelta(minutes=30)
-    # for i in prediction_times:
-        # print(i)
-    return prediction_times
+def get_prediction_times(**kwargs):
+    try:
+        time_zone = pytz.timezone(kwargs['time_zone'])    
+    except Exception:        
+        time_zone = pytz.timezone("Asia/Kolkata")    
+    start_day = kwargs['start_day']
+    prediction_intervals = list()
+    required_time = start_day    
+    
+    
+    if kwargs['days'] != None :
+        end_day = start_day+timedelta(days=kwargs['days'])
+        end_day = end_day.replace(hour=0,minute=0,second=0,microsecond=0,tzinfo=time_zone)
+        
+    else:
+        end_day = start_day+timedelta(days=1)
+        end_day = end_day.replace(hour=0,minute=0,second=0,microsecond=0,tzinfo=time_zone)
+    
+
+    if kwargs['interval']!=None:
+        while required_time<end_day:
+            prediction_intervals.append(required_time)
+            required_time+=timedelta(minutes=kwargs['interval'])
+    else:
+        required_time = required_time.replace(hour=0,minute=0,second=0,microsecond=0,tzinfo=time_zone)        
+        while required_time<end_day:
+            prediction_intervals.append(required_time)
+            required_time+=timedelta(days=1)
+    
+    return prediction_intervals
 
 def get_distance(node_location,location):
     #does not take into account
