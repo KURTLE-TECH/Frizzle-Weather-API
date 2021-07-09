@@ -1,3 +1,4 @@
+from collections import defaultdict
 import random
 import boto3
 import redis
@@ -6,7 +7,8 @@ import base64
 from flask import Flask, request, jsonify
 from json import loads
 from datetime import datetime
-from WeatherModel import api_model_pipeline
+#from WeatherModel import api_model_pipeline
+from Endpoint_Object import Endpoint_Object
 from get_data import get_prediction_times, get_closest_node, get_log
 from database import DynamodbHandler
 import logging
@@ -19,7 +21,8 @@ with open("config.json","r") as f:
 redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"],port=config["redis_port"],db=0)
 models = dict()
 weather_condition = config["weather_condition"]
-
+# Machine learning models endpoint object
+model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
 # app initialisation
 app = Flask(__name__)
 logging.basicConfig(filename='api_server.log', filemode="w", level=logging.INFO,format=config['log_format'])
@@ -54,8 +57,7 @@ def get_prediction():
 
     forecasted_weather = dict()
     if request_type == "detailed":        
-        model = api_model_pipeline.Model_Pipeline(None, models)
-        
+                
         # get the next 7 days
         all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=7,time_zone="Asia/Kolkata")
 
@@ -69,52 +71,63 @@ def get_prediction():
                 all_times[day] = get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata")
         
             # data structure for the prediction
-            day_string = day.strftime("%y-%m-%d")
-            forecasted_weather[day_string] = {"temperature":{},"pressure":{},"humidity":{},"forecast":{}}            
-                
+            day_string = day.strftime("%Y-%m-%d")
+            forecasted_weather[day_string] = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{}}                       
             for time in all_times[day]:
-                time_string = time.strftime(format="%y-%m-%d %H:%M:%S")
-                forecasted_weather[day_string]["forecast"][time_string] = weather_condition[str(model.forecast_weath(time)[0])]
-                forecasted_weather[day_string]["temperature"][time_string] = str(model.temperature[0])
-                forecasted_weather[day_string]["humidity"][time_string] = str(model.humidity[0])
-                forecasted_weather[day_string]["pressure"][time_string] = str(model.pressure[0])
+                time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+                
+
+                #working models
+                forecasted_weather[day_string]["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time_string)
+                forecasted_weather[day_string]['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
+                forecasted_weather[day_string]['humidity'][time_string] = model_object.humid_model().split(",")[0]
+
+                #models to add. currently dummy models                
+                forecasted_weather[time_string]['rain_probability'][time_string] = model_object.humid_model().split(",")[0]
+                forecasted_weather[day_string]["forecast"][time_string] = {"sunny":str(random()),"cloudy":str(random()),"rainy":str(random())}                
+                # _cloud_percentage = model_object.cloud_model().split(",")[0]
+                # forecasted_weather[day_string]['rain'][time_string] = model_object.rain_model()
+                # forecasted_weather[day_string]['forecast'][time_string] = config["weather_condition"][str(random.randint(0,2))]
+                
+            
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
                 
 
     elif request_type == "default":
-        
+        forecasted_weather = defaultdict()
         # get the closest node from the user
-        try:
-            closest_node = get_closest_node(location)        
-            if closest_node is not None:            
-                image = loads(redis_endpoint[closest_node])['picture']
-                model = api_model_pipeline.Model_Pipeline(image, models)
-        except Exception:                
-            model = api_model_pipeline.Model_Pipeline(None, models)
-        else:
-            model = api_model_pipeline.Model_Pipeline(None, models)        
-            
+        # try:
+        #     closest_node = get_closest_node(location)        
+        #     if closest_node is not None:            
+        #         image = loads(redis_endpoint[closest_node])['picture']
+                
+        # except Exception as e:                
+        #     #return jsonify({"status":"failed","reason":str(e)})
+        #     pass                            
         prediction_times = get_prediction_times(start_day = datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=30,days=None,time_zone="Asia/Kolkata")
-
+        
         for time in prediction_times:
+            time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+            forecasted_weather[time_string] = defaultdict()
             try:
-                forecasted_weather[time.strftime(format="%y-%m-%d %H:%M:%S")] = weather_condition[str(model.forecast_weath(time)[0])]
+                time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+                forecasted_weather[time_string]['temp'] = str(round(float(model_object.temp_model(client_data['lat'],client_data['lng'],time_string)),1))
+                forecasted_weather[time_string]['pressure'] = str(round(float(model_object.press_model()),1)) 
+                #rain is humidity here                               
+                forecasted_weather[time_string]['rain_probability'] = model_object.humid_model().split(",")[0]
+                forecasted_weather[time_string]['forecast'] = config["weather_condition"][str(random.randint(0,2))]
+                
             except Exception as e:
+                print(e)
                 app.logger.error(get_log(logging.ERROR,request,str(e)))
                 return jsonify({"Status": "Failed", "Reason": str(e)})
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
 
 
-def load_models():
-    models['temperature'] = joblib.load("models/temperature_model.joblib.dat")
-    models['pressure'] = joblib.load("models/pressure_model.joblib.dat")
-    models['humidity'] = joblib.load("models/humidity_model.joblib.dat")
-    #self.wind_speed_model = joblib.load("models/wind_speed_model.joblib.dat")
-    models['weather'] = joblib.load("models/weath_model.joblib.dat")
 
 
-load_models()
+#load_models()
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True,port=5000)
