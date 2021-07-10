@@ -1,5 +1,6 @@
 from collections import defaultdict
 import random
+import threading
 import boto3
 import redis
 import joblib
@@ -9,10 +10,11 @@ from json import loads
 from datetime import datetime
 #from WeatherModel import api_model_pipeline
 from Endpoint_Object import Endpoint_Object
-from get_data import get_prediction_times, get_closest_node, get_log
+from get_data import get_closest_half_hour, get_prediction_times, get_closest_node, get_log,get_detailed_forecast
 from database import DynamodbHandler
 import logging
 import pytz
+from concurrent.futures import ThreadPoolExecutor,as_completed
 
 # external configuration; needs to be loaded from a json file
 with open("config.json","r") as f:
@@ -59,36 +61,57 @@ def get_prediction():
     if request_type == "detailed":        
                 
         # get the next 7 days
-        all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=7,time_zone="Asia/Kolkata")
-
+        print("Start day calculation",datetime.now())
+        all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=6,time_zone="Asia/Kolkata")
+        print("End day calculation",datetime.now())
         #get the times for each day
         all_times = {}
-        forecasted_weather = dict()
-        for day in all_days:
-            if datetime.now(tz=pytz.timezone("Asia/Kolkata")).day == day.day:
-                all_times[day] = get_prediction_times(start_day=datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=30,days=None,time_zone="Asia/Kolkata")
-            else:
-                all_times[day] = get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata")
-        
-            # data structure for the prediction
-            day_string = day.strftime("%Y-%m-%d")
-            forecasted_weather[day_string] = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{}}                       
-            for time in all_times[day]:
-                time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+        forecasted_weather = dict()        
+        lock =  threading.Lock()
+        with ThreadPoolExecutor(max_workers=7) as e:
+            # futures = [e.submit(foo, param)for param in param_list]
+            # futures = e.map(get_detailed_forecast,all_days,config,client_data)
+            # for day in all_days:
+            futures = {e.submit(get_detailed_forecast,day,config,client_data):day for day in all_days}
+            for future in as_completed(futures):
+                # print("Future value",futures[future])
+                forecasted_weather[futures[future].strftime("%Y-%m-%d")] = future.result()
+
+                # print(day,return_value)
+
+            # print("Start hour",day.strftime("%Y-%m-%d"),datetime.now())
+            # if datetime.now(tz=pytz.timezone("Asia/Kolkata")).day == day.day:
+            #     start_time = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata"))
+            #     all_times[day] = get_prediction_times(start_day=datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=30,days=None,time_zone="Asia/Kolkata")
+            # else:
+            #     all_times[day] = get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata")
+            # print("End of hour ",day.strftime("%Y-%m-%d"),datetime.now())
+            # # data structure for the prediction
+            
+            # forecasted_weather[day_string] = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{},"rain_probability":{}}                       
+            # print("Forecast calculation start",day.strftime("%Y-%m-%d"),datetime.now())
+            # for time in all_times[day]:
+            #     time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
                 
 
-                #working models
-                forecasted_weather[day_string]["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time_string)
-                forecasted_weather[day_string]['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
-                forecasted_weather[day_string]['humidity'][time_string] = model_object.humid_model().split(",")[0]
+            #     #working models
+            #     forecasted_weather[day_string]["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time_string)
+            #     forecasted_weather[day_string]['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
+            #     forecasted_weather[day_string]['humidity'][time_string] = model_object.humid_model().split(",")[0]
 
-                #models to add. currently dummy models                
-                forecasted_weather[time_string]['rain_probability'][time_string] = model_object.humid_model().split(",")[0]
-                forecasted_weather[day_string]["forecast"][time_string] = {"sunny":str(random()),"cloudy":str(random()),"rainy":str(random())}                
-                # _cloud_percentage = model_object.cloud_model().split(",")[0]
-                # forecasted_weather[day_string]['rain'][time_string] = model_object.rain_model()
-                # forecasted_weather[day_string]['forecast'][time_string] = config["weather_condition"][str(random.randint(0,2))]
-                
+            #     #models to add. currently dummy models                
+            #     forecasted_weather[day_string]['rain_probability'][time_string] = forecasted_weather[day_string]['humidity'][time_string]
+            #     forecasted_weather[day_string]["forecast"][time_string] = {"sunny":str(random.random()),"cloudy":str(random.random()),"rainy":str(random.random())}    
+            #     forecasted_weather[day_string]["feels like"] = str(random.randrange(0,50))
+            #     forecasted_weather[day_string]["dew point"] = str(random.randrange(0,50))
+            #     forecasted_weather[day_string]["sun rise"] = "6 am"
+            #     forecasted_weather[day_string]["sun set"] = "6 pm"
+            #     forecasted_weather[day_string]["uv index"] = "5.5"
+            #     forecasted_weather[day_string]["day light duration"] = "11"            
+            #     # _cloud_percentage = model_object.cloud_model().split(",")[0]
+            #     # forecasted_weather[day_string]['rain'][time_string] = model_object.rain_model()
+            #     # forecasted_weather[day_string]['forecast'][time_string] = config["weather_condition"][str(random.randint(0,2))]
+            # print("Forecast calculation end",day.strftime("%Y-%m-%d"),datetime.now())
             
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
@@ -115,7 +138,7 @@ def get_prediction():
                 forecasted_weather[time_string]['temp'] = str(round(float(model_object.temp_model(client_data['lat'],client_data['lng'],time_string)),1))
                 forecasted_weather[time_string]['pressure'] = str(round(float(model_object.press_model()),1)) 
                 #rain is humidity here                               
-                forecasted_weather[time_string]['rain_probability'] = model_object.humid_model().split(",")[0]
+                forecasted_weather[time_string]['rain_probability'] = forecasted_weather[time_string]['pressure']
                 forecasted_weather[time_string]['forecast'] = config["weather_condition"][str(random.randint(0,2))]
                 
             except Exception as e:

@@ -4,8 +4,9 @@ import pytz
 from database import DynamodbHandler as db
 from math import sin,cos,asin,sqrt,radians
 from collections import defaultdict
+from Endpoint_Object import Endpoint_Object
 #time_zone = timezone(offset=timedelta(hours=5,minutes=30),name="Asia/Kolkata")
-
+import random
 #start, end, intervals
 def get_prediction_times(**kwargs):
     try:
@@ -27,12 +28,12 @@ def get_prediction_times(**kwargs):
     
 
     if kwargs['interval']!=None:
-        while required_time<end_day:
+        while required_time<=end_day:
             prediction_intervals.append(required_time)
             required_time+=timedelta(minutes=kwargs['interval'])
     else:
         required_time = required_time.replace(hour=0,minute=0,second=0,microsecond=0,tzinfo=time_zone)        
-        while required_time<end_day:
+        while required_time<=end_day:
             prediction_intervals.append(required_time)
             required_time+=timedelta(days=1)
     
@@ -56,8 +57,6 @@ def get_distance(node_location,location):
 def get_closest_node(location):
     db_handler = db.DynamodbHandler()
     response = db_handler.view_database('Nodes_Available')
-    print(location)
-    print(response)
     if 'Items' in response.keys():
     #model is default model        
         distances=defaultdict(None)
@@ -66,7 +65,7 @@ def get_closest_node(location):
             try:
                 node_location['lat'] = node['lat']['S'] 
                 node_location['lng'] = node['lng']['S']
-                if node_location['lat'] !='' and node_location['lng'] != '':
+                if node_location['lat'] !='' and node_location['lng'] != '' and node['registration']['S'] == 'complete':
                     distance = get_distance(location,node_location)
                     distances[distance] = node['Device ID']['S'] 
             except Exception:
@@ -85,3 +84,41 @@ def get_log(log_level,request,error):
         return f"Address: {request.remote_addr}%s - Request Path {request.path} - Time {curr_time}"                        
     elif log_level == logging.ERROR:
         return f"Address: {request.remote_addr}%s - Request Path: {request.path} - Time: {curr_time} - Reason: {error}"
+
+def get_closest_half_hour(curr_time):        
+    if curr_time.minute<=30:
+        start_time = curr_time+timedelta(minutes=30-curr_time.minute) 
+    else:
+        start_time = curr_time+timedelta(minutes=60-curr_time.minute) 
+    return start_time
+
+def get_detailed_forecast(day,config,client_data):    
+    model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
+    all_times=list()
+    if datetime.now(tz=pytz.timezone("Asia/Kolkata")).day == day.day:
+        start_time = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata")))
+        all_times = get_prediction_times(start_day=start_time,interval=30,days=None,time_zone="Asia/Kolkata")
+    else:
+        all_times = get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata")
+    
+    # data structure for the prediction    
+    day_forecast = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{},"rain_probability":{}}
+    for time in all_times:
+        time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+        
+
+        #working models
+        day_forecast["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time_string)
+        day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
+        day_forecast['humidity'][time_string] = model_object.humid_model().split(",")[0]
+
+        #models to add. currently dummy models                
+        day_forecast['rain_probability'][time_string] = day_forecast['humidity'][time_string]
+        day_forecast["forecast"][time_string] = {"sunny":str(random.random()),"cloudy":str(random.random()),"rainy":str(random.random())}    
+        day_forecast["feels like"] = str(random.randrange(0,50))
+        day_forecast["dew point"] = str(random.randrange(0,50))
+        day_forecast["sun rise"] = "6 am"
+        day_forecast["sun set"] = "6 pm"
+        day_forecast["uv index"] = "5.5"
+        day_forecast["day light duration"] = "11"            
+    return day_forecast
