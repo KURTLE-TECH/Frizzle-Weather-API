@@ -61,9 +61,9 @@ def get_prediction():
     if request_type == "detailed":        
                 
         # get the next 7 days
-        print("Start day calculation",datetime.now())
+        # print("Start day calculation",datetime.now())
         all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=6,time_zone="Asia/Kolkata")
-        print("End day calculation",datetime.now())
+        # print("End day calculation",datetime.now())
         #get the times for each day
         all_times = {}
         forecasted_weather = dict()        
