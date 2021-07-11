@@ -10,7 +10,7 @@ from json import loads
 from datetime import datetime
 #from WeatherModel import api_model_pipeline
 from Endpoint_Object import Endpoint_Object
-from get_data import get_closest_half_hour, get_prediction_times, get_closest_node, get_log,get_detailed_forecast
+from get_data import get_closest_half_hour, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
 from database import DynamodbHandler
 import logging
 import pytz
@@ -128,7 +128,7 @@ def get_prediction():
         # except Exception as e:                
         #     #return jsonify({"status":"failed","reason":str(e)})
         #     pass                            
-        prediction_times = get_prediction_times(start_day = datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=30,days=None,time_zone="Asia/Kolkata")
+        prediction_times = get_prediction_times(start_day = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata"))),interval=30,days=None,time_zone="Asia/Kolkata")
         
         for time in prediction_times:
             time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
@@ -148,8 +148,22 @@ def get_prediction():
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
 
-
-
+@app.route("/api/get_live_data",methods=["GET"])
+def get_live_data():
+    try:
+        client_data = loads(request.data)
+        node_id = client_data["Device ID"]
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to load client data"))
+        return {}
+    try:
+        data = get_data_from_redis(redis_cluster_endpoint,node_id)
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
+        return {}        
+    app.logger.info(get_log(logging.info,request,None))    
+    return data
+    
 
 #load_models()
 if __name__ == "__main__":

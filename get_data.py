@@ -5,8 +5,9 @@ from database import DynamodbHandler as db
 from math import sin,cos,asin,sqrt,radians
 from collections import defaultdict
 from Endpoint_Object import Endpoint_Object
-#time_zone = timezone(offset=timedelta(hours=5,minutes=30),name="Asia/Kolkata")
+import redis
 import random
+from json import loads
 #start, end, intervals
 def get_prediction_times(**kwargs):
     try:
@@ -113,7 +114,7 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['humidity'][time_string] = model_object.humid_model().split(",")[0]
 
         #models to add. currently dummy models                
-        day_forecast['rain_probability'][time_string] = day_forecast['humidity'][time_string]
+        day_forecast['rain_probability'][time_string] = model_object.rain_model()
         day_forecast["forecast"][time_string] = {"sunny":str(random.random()),"cloudy":str(random.random()),"rainy":str(random.random())}    
         day_forecast["feels like"] = str(random.randrange(0,50))
         day_forecast["dew point"] = str(random.randrange(0,50))
@@ -122,3 +123,10 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast["uv index"] = "5.5"
         day_forecast["day light duration"] = "11"            
     return day_forecast
+
+def get_data_from_redis(cluster_end_point,node_id):
+    try:        
+        node_data = loads(cluster_end_point[node_id])
+        return node_data
+    except Exception as e:
+        return None
