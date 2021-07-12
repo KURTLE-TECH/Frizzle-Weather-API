@@ -40,25 +40,25 @@ class Endpoint_Calls(object):
     
     def humid_model(self):
         body = ','.join(self.feat)
-        response = self.client.invoke_endpoint(EndpointName='SageMakerEndpoint-07072021-hum', 
+        response = self.client.invoke_endpoint(EndpointName=self.models["humidity_model"], 
                                   ContentType = 'text/csv',
                                   Body = body)
         pred_humid = response['Body'].read().decode('utf-8')
-        self.feat.insert(-1,pred_humid)
+        self.feat.insert(-1,pred_humid[0])
         return pred_humid
 
     def cloud_model(self):
         body = ','.join(self.feat)
-        response = self.client.invoke_endpoint(EndpointName='SageMakerEndpoint-07072021-cloud', 
+        response = self.client.invoke_endpoint(EndpointName=self.models["cloud_model"], 
                                   ContentType = 'text/csv',
                                   Body = body)
         pred_cloud = response['Body'].read().decode('utf-8')
-        self.feat.insert(-1,pred_cloud)
+        self.feat.insert(-1,pred_cloud[0])
         return pred_cloud
 
     def rain_model(self):
         body = ','.join(self.feat)
-        response = self.client.invoke_endpoint(EndpointName='SageMakerEndpoint-07072021-rain', 
+        response = self.client.invoke_endpoint(EndpointName=self.models["rain_model"], 
                                   ContentType = 'text/csv',
                                   Body = body)
         pred_rain = response['Body'].read().decode('utf-8')
@@ -66,7 +66,7 @@ class Endpoint_Calls(object):
 
     def forecast_model(self):
         body = ','.join(self.feat)
-        response = self.client.invoke_endpoint(EndpointName='SageMakerEndpoint-07072021-weath', 
+        response = self.client.invoke_endpoint(EndpointName=self.models["weath_model"], 
                                   ContentType = 'text/csv',
                                   Body = body)
         pred_weath = response['Body'].read().decode('utf-8')

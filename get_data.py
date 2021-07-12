@@ -112,10 +112,11 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time_string)
         day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
         day_forecast['humidity'][time_string] = model_object.humid_model().split(",")[0]
-
+        clouds = model_object.cloud_model()
         #models to add. currently dummy models                
-        day_forecast['rain_probability'][time_string] = model_object.rain_model()
-        day_forecast["forecast"][time_string] = {"sunny":str(random.random()),"cloudy":str(random.random()),"rainy":str(random.random())}    
+        day_forecast['rain_probability'][time_string] = str(model_object.rain_model())
+        day_forecast["forecast"][time_string] = model_object.forecast_model()
+        
         day_forecast["feels like"] = str(random.randrange(0,50))
         day_forecast["dew point"] = str(random.randrange(0,50))
         day_forecast["sun rise"] = "6 am"
