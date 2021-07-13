@@ -11,7 +11,7 @@ from json import loads
 #start, end, intervals
 def get_prediction_times(**kwargs):
     try:
-        time_zone = pytz.timezone(kwargs['time_zone'])    
+        time_zone = pytz.timezone(kwargs['time_zone'])  
     except Exception:        
         time_zone = pytz.timezone("Asia/Kolkata")    
     start_day = kwargs['start_day']
@@ -74,8 +74,6 @@ def get_closest_node(location):
             
         return distances[min(distances.keys())]
         
-
-
     elif 'status' in response.keys():
         return None
 
@@ -105,24 +103,31 @@ def get_detailed_forecast(day,config,client_data):
     # data structure for the prediction    
     day_forecast = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{},"rain_probability":{}}
     for time in all_times:
-        time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+        time_string = time.strftime(format="%y-%m-%d %H:%M:%S")
         
 
         #working models
-        day_forecast["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time_string)
+        # forecasts temperature, pressure, humidity, cloud, probability of rain(converted to percentage) and forecast(along with probabilities)
+        day_forecast["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time.strftime(format="%Y-%m-%d %H:%M:%S"))
         day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
-        day_forecast['humidity'][time_string] = model_object.humid_model().split(",")[0]
-        clouds = model_object.cloud_model()
-        #models to add. currently dummy models                
-        day_forecast['rain_probability'][time_string] = str(model_object.rain_model())
-        day_forecast["forecast"][time_string] = model_object.forecast_model()
-        
+        day_forecast['humidity'][time_string] = str(int(model_object.humid_model().split(",")[0])*25)
+        clouds = model_object.cloud_model()        
+        day_forecast['rain_probability'][time_string] = str(int(float(model_object.rain_model().split(',')[2].lstrip()[:7])*100)*10)        
+        forecast = model_object.forecast_model()
+        all_conditions = forecast.split(",")        
+        day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:str(float(all_conditions[1][2:6])/10.0),
+                                                config["weather_condition"]["1"]:f"{float(all_conditions[2].lstrip()[:4])/10.0:.16f}",
+                                                config["weather_condition"]["2"]:str(float(all_conditions[3].lstrip()[:4])/10.0),
+                                                 config["weather_condition"]["3"]:f"{float(all_conditions[4].lstrip()[:4])/10.0:.16f}",
+                                                 config["weather_condition"]["4"]:f"{float(all_conditions[5][:10].lstrip()[:4])/10.0:.16f}"
+                                                }        
         day_forecast["feels like"] = str(random.randrange(0,50))
-        day_forecast["dew point"] = str(random.randrange(0,50))
+        day_forecast["dew_point"] = str(random.randrange(0,50))
         day_forecast["sun rise"] = "6 am"
         day_forecast["sun set"] = "6 pm"
-        day_forecast["uv index"] = "5.5"
-        day_forecast["day light duration"] = "11"            
+        day_forecast["UV index"] = "5.5"
+        day_forecast["daylight"] = "11"            
+        day_forecast["wind_speed"] = "125"            
     return day_forecast
 
 def get_data_from_redis(cluster_end_point,node_id):

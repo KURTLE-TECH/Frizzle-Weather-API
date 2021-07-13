@@ -75,7 +75,7 @@ def get_prediction():
             futures = {e.submit(get_detailed_forecast,day,config,client_data):day for day in all_days}
             for future in as_completed(futures):
                 # print("Future value",futures[future])
-                forecasted_weather[futures[future].strftime("%Y-%m-%d")] = future.result()
+                forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()
 
                 # print(day,return_value)
 
@@ -136,10 +136,19 @@ def get_prediction():
             try:
                 time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
                 forecasted_weather[time_string]['temp'] = str(round(float(model_object.temp_model(client_data['lat'],client_data['lng'],time_string)),1))
-                forecasted_weather[time_string]['pressure'] = str(round(float(model_object.press_model()),1)) 
+                forecasted_weather[time_string]['pressure'] = str(round(float(model_object.press_model()),1))
+                humidity = str(int(model_object.humid_model().split(",")[0])*25) 
                 #rain is humidity here                               
-                forecasted_weather[time_string]['rain_probability'] = forecasted_weather[time_string]['pressure']
-                forecasted_weather[time_string]['forecast'] = config["weather_condition"][str(random.randint(0,2))]
+                clouds = model_object.cloud_model()
+                #models to add. currently dummy models                
+                # day_forecast['rain_probability'][time_string] = str(int(abs(float(model_object.rain_model()))*100))
+                forecasted_weather[time_string]['rain_probability'] = str(int(float(model_object.rain_model().split(',')[2].lstrip()[:7])*100)*10)
+                # day_forecast['rain_probability'][time_string] = str(random.random(0,1))
+                forecast = model_object.forecast_model()
+                forecasted_weather[time_string]['forecast'] = config["weather_condition"][forecast.split(",")[0]]
+                # forecasted_weather[time_string]['forecast'] = "drizzle"
+                # forecasted_weather[time_string]['rain_probability'] = forecasted_weather[time_string]['pressure']
+                # forecasted_weather[time_string]['forecast'] = config["weather_condition"][str(random.randint(0,2))]
                 
             except Exception as e:
                 print(e)
