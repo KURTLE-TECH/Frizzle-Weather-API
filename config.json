@@ -3,7 +3,7 @@
     "redis_host": "frizzle-redis-cluster.zcgu4a.ng.0001.aps1.cache.amazonaws.com",
     "redis_port": 6379,
     "region": "ap-south-1",
-    "weather_condition": { "0": "sunny", "1": "cloudy", "2": "rainy", "3": "thunderstom", "4": "drizzle" },
+    "weather_condition": { "0": "sunny", "1": "cloudy", "2": "rainy", "3": "thunderstorm", "4": "drizzle" },
     "access_key": "AKIAWY4ZKYYE5BL5SUUZ",
     "secret_access_key": "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",
     "models": {

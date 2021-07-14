@@ -123,10 +123,10 @@ def get_detailed_forecast(day,config,client_data):
                                                 }        
         day_forecast["feels like"] = str(random.randrange(0,50))
         day_forecast["dew_point"] = str(random.randrange(0,50))
-        day_forecast["sun rise"] = "6 am"
-        day_forecast["sun set"] = "6 pm"
-        day_forecast["UV index"] = "5.5"
-        day_forecast["daylight"] = "11"            
+        day_forecast["Sunrise"] = "6 am"
+        day_forecast["Sunset"] = "6 pm"
+        day_forecast["UV Index"] = "5.5"
+        day_forecast["Daylight"] = "11"            
         day_forecast["wind_speed"] = "125"            
     return day_forecast
 
