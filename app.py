@@ -24,7 +24,7 @@ redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"],
 models = dict()
 weather_condition = config["weather_condition"]
 # Machine learning models endpoint object
-model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
+
 # app initialisation
 app = Flask(__name__)
 logging.basicConfig(filename='api_server.log', filemode="w", level=logging.INFO,format=config['log_format'])
@@ -68,50 +68,12 @@ def get_prediction():
         all_times = {}
         forecasted_weather = dict()        
         lock =  threading.Lock()
-        with ThreadPoolExecutor(max_workers=7) as e:
-            # futures = [e.submit(foo, param)for param in param_list]
-            # futures = e.map(get_detailed_forecast,all_days,config,client_data)
-            # for day in all_days:
+        with ThreadPoolExecutor(max_workers=7) as e:            
             futures = {e.submit(get_detailed_forecast,day,config,client_data):day for day in all_days}
             for future in as_completed(futures):
                 # print("Future value",futures[future])
                 forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()
 
-                # print(day,return_value)
-
-            # print("Start hour",day.strftime("%Y-%m-%d"),datetime.now())
-            # if datetime.now(tz=pytz.timezone("Asia/Kolkata")).day == day.day:
-            #     start_time = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata"))
-            #     all_times[day] = get_prediction_times(start_day=datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=30,days=None,time_zone="Asia/Kolkata")
-            # else:
-            #     all_times[day] = get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata")
-            # print("End of hour ",day.strftime("%Y-%m-%d"),datetime.now())
-            # # data structure for the prediction
-            
-            # forecasted_weather[day_string] = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{},"rain_probability":{}}                       
-            # print("Forecast calculation start",day.strftime("%Y-%m-%d"),datetime.now())
-            # for time in all_times[day]:
-            #     time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
-                
-
-            #     #working models
-            #     forecasted_weather[day_string]["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time_string)
-            #     forecasted_weather[day_string]['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
-            #     forecasted_weather[day_string]['humidity'][time_string] = model_object.humid_model().split(",")[0]
-
-            #     #models to add. currently dummy models                
-            #     forecasted_weather[day_string]['rain_probability'][time_string] = forecasted_weather[day_string]['humidity'][time_string]
-            #     forecasted_weather[day_string]["forecast"][time_string] = {"sunny":str(random.random()),"cloudy":str(random.random()),"rainy":str(random.random())}    
-            #     forecasted_weather[day_string]["feels like"] = str(random.randrange(0,50))
-            #     forecasted_weather[day_string]["dew point"] = str(random.randrange(0,50))
-            #     forecasted_weather[day_string]["sun rise"] = "6 am"
-            #     forecasted_weather[day_string]["sun set"] = "6 pm"
-            #     forecasted_weather[day_string]["uv index"] = "5.5"
-            #     forecasted_weather[day_string]["day light duration"] = "11"            
-            #     # _cloud_percentage = model_object.cloud_model().split(",")[0]
-            #     # forecasted_weather[day_string]['rain'][time_string] = model_object.rain_model()
-            #     # forecasted_weather[day_string]['forecast'][time_string] = config["weather_condition"][str(random.randint(0,2))]
-            # print("Forecast calculation end",day.strftime("%Y-%m-%d"),datetime.now())
             
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
@@ -129,22 +91,24 @@ def get_prediction():
         #     #return jsonify({"status":"failed","reason":str(e)})
         #     pass                            
         prediction_times = get_prediction_times(start_day = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata"))),interval=30,days=None,time_zone="Asia/Kolkata")
-        
+        model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
         for time in prediction_times:
             time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
             forecasted_weather[time_string] = defaultdict()
             try:
                 time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
                 forecasted_weather[time_string]['temp'] = str(round(float(model_object.temp_model(client_data['lat'],client_data['lng'],time_string)),1))
+                
                 forecasted_weather[time_string]['pressure'] = str(round(float(model_object.press_model()),1))
+                
                 humidity = str(int(model_object.humid_model().split(",")[0])*25) 
-                #rain is humidity here                               
+                
                 clouds = model_object.cloud_model()
-                #models to add. currently dummy models                
-                # day_forecast['rain_probability'][time_string] = str(int(abs(float(model_object.rain_model()))*100))
+                
                 forecasted_weather[time_string]['rain_probability'] = str(int(float(model_object.rain_model().split(',')[2].lstrip()[:7])*100)*10)
-                # day_forecast['rain_probability'][time_string] = str(random.random(0,1))
+                
                 forecast = model_object.forecast_model()
+                
                 forecasted_weather[time_string]['forecast'] = config["weather_condition"][forecast.split(",")[0]]
                 # forecasted_weather[time_string]['forecast'] = "drizzle"
                 # forecasted_weather[time_string]['rain_probability'] = forecasted_weather[time_string]['pressure']
