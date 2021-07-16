@@ -15,7 +15,7 @@ from database import DynamodbHandler
 import logging
 import pytz
 from concurrent.futures import ThreadPoolExecutor,as_completed
-
+from math import ceil
 # external configuration; needs to be loaded from a json file
 with open("config.json","r") as f:
     config = loads(f.read())
@@ -104,8 +104,8 @@ def get_prediction():
                 humidity = str(int(model_object.humid_model().split(",")[0])*25) 
                 
                 clouds = model_object.cloud_model()
-                
-                forecasted_weather[time_string]['rain_probability'] = str(int(float(model_object.rain_model().split(',')[2].lstrip()[:7])*100)*10)
+                rain = model_object.rain_model()
+                forecasted_weather[time_string]['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
                 
                 forecast = model_object.forecast_model()
                 

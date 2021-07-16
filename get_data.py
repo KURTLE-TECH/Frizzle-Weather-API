@@ -8,6 +8,7 @@ from Endpoint_Object import Endpoint_Object
 import redis
 import random
 from json import loads
+from math import ceil
 #start, end, intervals
 def get_prediction_times(**kwargs):
     try:
@@ -111,8 +112,9 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time.strftime(format="%Y-%m-%d %H:%M:%S"))
         day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
         day_forecast['humidity'][time_string] = str(int(model_object.humid_model().split(",")[0])*25)
-        clouds = model_object.cloud_model()        
-        day_forecast['rain_probability'][time_string] = str(int(float(model_object.rain_model().split(',')[2].lstrip()[:7])*100)*10)        
+        clouds = model_object.cloud_model()    
+        rain = model_object.rain_model()     
+        day_forecast['rain_probability'][time_string] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
         forecast = model_object.forecast_model()
         all_conditions = forecast.split(",")        
         day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:str(float(all_conditions[1][2:6])/10.0),
