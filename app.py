@@ -10,7 +10,7 @@ from json import loads
 from datetime import datetime
 #from WeatherModel import api_model_pipeline
 from Endpoint_Object import Endpoint_Object
-from get_data import get_closest_half_hour, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
+from get_data import get_closest_half_hour, get_default_forecast, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
 from database import DynamodbHandler
 import logging
 import pytz
@@ -64,10 +64,8 @@ def get_prediction():
         # print("Start day calculation",datetime.now())
         all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=6,time_zone="Asia/Kolkata")
         # print("End day calculation",datetime.now())
-        #get the times for each day
-        all_times = {}
-        forecasted_weather = dict()        
-        lock =  threading.Lock()
+        #get the times for each day        
+        forecasted_weather = dict()                
         with ThreadPoolExecutor(max_workers=7) as e:            
             futures = {e.submit(get_detailed_forecast,day,config,client_data):day for day in all_days}
             for future in as_completed(futures):
@@ -91,33 +89,18 @@ def get_prediction():
         #     #return jsonify({"status":"failed","reason":str(e)})
         #     pass                            
         prediction_times = get_prediction_times(start_day = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata"))),interval=30,days=None,time_zone="Asia/Kolkata")
-        model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
-        for time in prediction_times:
-            time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
-            forecasted_weather[time_string] = defaultdict()
-            try:
-                time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
-                forecasted_weather[time_string]['temp'] = str(round(float(model_object.temp_model(client_data['lat'],client_data['lng'],time_string)),1))
-                
-                forecasted_weather[time_string]['pressure'] = str(round(float(model_object.press_model()),1))
-                
-                humidity = str(int(model_object.humid_model().split(",")[0])*25) 
-                
-                clouds = model_object.cloud_model()
-                rain = model_object.rain_model()
-                forecasted_weather[time_string]['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
-                
-                forecast = model_object.forecast_model()
-                
-                forecasted_weather[time_string]['forecast'] = config["weather_condition"][forecast.split(",")[0]]
-                # forecasted_weather[time_string]['forecast'] = "drizzle"
-                # forecasted_weather[time_string]['rain_probability'] = forecasted_weather[time_string]['pressure']
-                # forecasted_weather[time_string]['forecast'] = config["weather_condition"][str(random.randint(0,2))]
-                
-            except Exception as e:
-                print(e)
-                app.logger.error(get_log(logging.ERROR,request,str(e)))
-                return jsonify({"Status": "Failed", "Reason": str(e)})
+        # model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
+        # for time in prediction_times:
+            # forecasted_weather[time.strftime("%Y-%m-%d %H:%M:%S")] = {}
+        try:
+            with ThreadPoolExecutor(max_workers=2) as e:            
+                futures = {e.submit(get_default_forecast,time,config,client_data):time for time in prediction_times}
+                for future in as_completed(futures):
+                    # print("Future value",futures[future])
+                    forecasted_weather[futures[future].strftime("%Y-%m-%d %H:%M:%S")] = future.result()                        
+        except Exception as e:                
+            app.logger.error(get_log(logging.ERROR,request,str(e)))
+            return jsonify({"Status": "Failed", "Reason": str(e)})
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
 

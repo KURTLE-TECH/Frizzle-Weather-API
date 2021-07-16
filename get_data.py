@@ -132,6 +132,24 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast["wind_speed"] = "125"            
     return day_forecast
 
+def get_default_forecast(time,config,client_data):
+    time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+    model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
+    weather_forecast = dict()
+
+    weather_forecast['temp'] = str(round(float(model_object.temp_model(client_data['lat'],client_data['lng'],time_string)),1))
+    weather_forecast['pressure'] = str(round(float(model_object.press_model()),1))                
+    humidity = str(int(model_object.humid_model().split(",")[0])*25) 
+    clouds = model_object.cloud_model()
+    rain = model_object.rain_model()
+    weather_forecast['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
+
+    forecast = model_object.forecast_model()
+
+    weather_forecast['forecast'] = config["weather_condition"][forecast.split(",")[0]]
+
+    return weather_forecast
+
 def get_data_from_redis(cluster_end_point,node_id):
     try:        
         node_data = loads(cluster_end_point[node_id])
