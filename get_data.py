@@ -159,6 +159,7 @@ def get_data_from_redis(cluster_end_point,node_id):
         if old_id in ["457661a4-4132-4a2e-91b5-6f636af0470","1772f7fe-e221-4fe0-a0f3-c569c5f3554c"]:
             node_data['time-stamp'] = (datetime.now()-timedelta(minutes=3)).strftime(format="%Y-%m-%d_%H:%M:%S")
             node_data['TimeStamp'] = (datetime.now()-timedelta(minutes=4)).strftime(format="%Y-%m-%d %H:%M:%S.%f")
+            node_data["Device ID"] = old_id
         return node_data
     except Exception as e:
         return None
