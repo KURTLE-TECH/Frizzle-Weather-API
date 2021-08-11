@@ -113,16 +113,17 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
         day_forecast['humidity'][time_string] = str(int(model_object.humid_model().split(",")[0])*25)
         clouds = model_object.cloud_model()    
-        rain = model_object.rain_model()     
-        day_forecast['rain_probability'][time_string] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
+        rain = model_object.rain_model()             
+        day_forecast['rain_probability'][time_string] = str(int(float(rain[2:])*100))
         forecast = model_object.forecast_model()
         all_conditions = forecast.split(",")        
-        day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:str(float(all_conditions[1][2:6])/10.0),
-                                                config["weather_condition"]["1"]:f"{float(all_conditions[2].lstrip()[:4])/10.0:.16f}",
-                                                config["weather_condition"]["2"]:str(float(all_conditions[3].lstrip()[:4])/10.0),
-                                                 config["weather_condition"]["3"]:f"{float(all_conditions[4].lstrip()[:4])/10.0:.16f}",
-                                                 config["weather_condition"]["4"]:f"{float(all_conditions[5][:10].lstrip()[:4])/10.0:.16f}"
-                                                }        
+        # day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:str(float(all_conditions[1][2:6])/10.0),
+        #                                         config["weather_condition"]["1"]:f"{float(all_conditions[2].lstrip()[:4])/10.0:.16f}",
+        #                                         config["weather_condition"]["2"]:str(float(all_conditions[3].lstrip()[:4])/10.0),
+        #                                          config["weather_condition"]["3"]:f"{float(all_conditions[4].lstrip()[:4])/10.0:.16f}",
+        #                                          config["weather_condition"]["4"]:f"{float(all_conditions[5][:10].lstrip()[:4])/10.0:.16f}"
+        #                                         }        
+        day_forecast["forecast"][time_string] = {"sunny":str(random.random()),"cloudy":str(random.random()),"rainy":str(random.random()),"thunderstorm":str(random.random()),"drizzle":str(random.random())}
         day_forecast["feels like"] = str(random.randrange(0,50))
         day_forecast["dew_point"] = str(random.randrange(0,50))
         day_forecast["Sunrise"] = "6 am"
@@ -142,7 +143,8 @@ def get_default_forecast(time,config,client_data):
     humidity = str(int(model_object.humid_model().split(",")[0])*25) 
     clouds = model_object.cloud_model()
     rain = model_object.rain_model()
-    weather_forecast['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
+    # weather_forecast['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
+    weather_forecast['rain_probability'] = str(int(float(rain[2:])*100))
 
     forecast = model_object.forecast_model()
 
