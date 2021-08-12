@@ -12,7 +12,7 @@
         "humidity_model": "hum-model",
         "cloud_model": "cloud-model",
         "rain_model": "rain-model-final",
-        "weath_model": "weath-model"
+        "weath_model": "weath-test"
     }
 
 
