@@ -164,4 +164,4 @@ def get_data_from_redis(cluster_end_point,node_id):
             node_data["Device ID"] = old_id
         return node_data
     except Exception as e:
-        return None
+        return {}
