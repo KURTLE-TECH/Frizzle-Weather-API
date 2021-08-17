@@ -120,13 +120,16 @@ def get_detailed_forecast(day,config,client_data):
         # print(type(weath),weath)
         weather_proba = weath.split('"')[1]
         # print(weather_proba)
-        weather_proba = [f"{float(i.lstrip('[').rstrip(']')):.4f}" for i in list(weather_proba.split(","))]
+        # weather_proba = [f"{float(i.lstrip('[').rstrip(']')):.4f}" for i in list(weather_proba.split(","))]
+        weather_proba = [float(i.lstrip('[').rstrip(']')) for i in list(weather_proba.split(","))]
         # print(weather_proba)
-        day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:weather_proba[0],
-        config["weather_condition"]["1"]:weather_proba[1],
-        config["weather_condition"]["2"]:weather_proba[2],
-                        config["weather_condition"]["3"]:weather_proba[3],
-                        config["weather_condition"]["4"]:weather_proba[4]}
+        total_proba = sum([i for i in weather_proba if weather_proba.index(i)!=2])        
+        day_forecast["forecast"][time_string] = {
+            config["weather_condition"]["0"]:f"{weather_proba[0]/total_proba:.4f}",
+            config["weather_condition"]["1"]:f"{weather_proba[1]/total_proba:.4f}",
+            config["weather_condition"]["3"]:f"{weather_proba[3]/total_proba:.4f}",
+            config["weather_condition"]["4"]:f"{weather_proba[4]/total_proba:.4f}",            
+        }
         # print(weath_dict)        
         # day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:str(float(all_conditions[1][2:6])/10.0),
         #                                         config["weather_condition"]["1"]:f"{float(all_conditions[2].lstrip()[:4])/10.0:.16f}",
@@ -155,14 +158,23 @@ def get_default_forecast(time,config,client_data):
     clouds = model_object.cloud_model()
     rain = model_object.rain_model()
     # weather_forecast['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
-    print(rain)
-    weather_forecast['rain_probability'] = str(int(float(rain[2:])*100))
-
-    forecast = model_object.forecast_model()
-
-    weather_forecast['forecast'] = config["weather_condition"][forecast.split(",")[0]]
-
-
+    
+    weather_forecast['rain_probability'] = str(int(float(rain[2:])*100))    
+    weath = model_object.forecast_model()    
+    # weather_forecast['forecast'] = config["weather_condition"][forecast.split(",")[0]]
+    
+    weather_proba = weath.split('"')[1]
+    weather_proba = [float(i.lstrip('[').rstrip(']')) for i in list(weather_proba.split(","))]        
+    total_proba = sum([i for i in weather_proba if weather_proba.index(i)!=2])        
+    all_proba = {
+            config["weather_condition"]["0"]:f"{weather_proba[0]/total_proba:.4f}",
+            config["weather_condition"]["1"]:f"{weather_proba[1]/total_proba:.4f}",
+            config["weather_condition"]["3"]:f"{weather_proba[3]/total_proba:.4f}",
+            config["weather_condition"]["4"]:f"{weather_proba[4]/total_proba:.4f}",            
+        }
+    
+    max_proba = max(all_proba.values())
+    weather_forecast['forecast'] = [i for i in all_proba.keys() if all_proba[i]==max_proba][0]
 
     return weather_forecast
 
