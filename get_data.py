@@ -130,6 +130,7 @@ def get_detailed_forecast(day,config,client_data):
             config["weather_condition"]["3"]:f"{weather_proba[3]/total_proba:.4f}",
             config["weather_condition"]["4"]:f"{weather_proba[4]/total_proba:.4f}",            
         }
+        day_forecast['rain_probability'][time_string] = str(int(weather_proba[3]/total_proba))
         # print(weath_dict)        
         # day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:str(float(all_conditions[1][2:6])/10.0),
         #                                         config["weather_condition"]["1"]:f"{float(all_conditions[2].lstrip()[:4])/10.0:.16f}",
@@ -180,14 +181,7 @@ def get_default_forecast(time,config,client_data):
 
 def get_data_from_redis(cluster_end_point,node_id):
     try:        
-        old_id = node_id
-        if old_id in ["457661a4-4132-4a2e-91b5-6f636af0470","1772f7fe-e221-4fe0-a0f3-c569c5f3554c"]:
-            node_id = "63e751e5-cc04-4b76-b9c7-61413f85868c"
         node_data = loads(cluster_end_point[node_id])
-        if old_id in ["457661a4-4132-4a2e-91b5-6f636af0470","1772f7fe-e221-4fe0-a0f3-c569c5f3554c"]:
-            node_data['time-stamp'] = (datetime.now()-timedelta(minutes=3)).strftime(format="%Y-%m-%d_%H:%M:%S")
-            node_data['TimeStamp'] = (datetime.now()-timedelta(minutes=4)).strftime(format="%Y-%m-%d %H:%M:%S.%f")
-            node_data["Device ID"] = old_id
         return node_data
     except Exception as e:
-        return {}
+        return {"Status":"Failed","Reason":f"Unable to get node data {str(e)}"}
