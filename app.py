@@ -1,4 +1,5 @@
 from collections import defaultdict
+from models.humid_script import humid_model
 import random
 import threading
 import boto3
@@ -16,9 +17,13 @@ import logging
 import pytz
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from math import ceil
+from models.humid_script import humid_model
 # external configuration; needs to be loaded from a json file
 with open("config.json","r") as f:
     config = loads(f.read())
+    humidity_model = humid_model()
+    humidity_model.load_model(config["models"]["humidity-model-value"])
+    config["humidity-model-object"] = humidity_model
 
 redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"],port=config["redis_port"],db=0)
 models = dict()

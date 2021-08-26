@@ -5,6 +5,7 @@ from database import DynamodbHandler as db
 from math import sin,cos,asin,sqrt,radians
 from collections import defaultdict
 from Endpoint_Object import Endpoint_Object
+from models.humid_script import humid_model
 import redis
 import random
 from json import loads
@@ -110,8 +111,13 @@ def get_detailed_forecast(day,config,client_data):
         #working models
         # forecasts temperature, pressure, humidity, cloud, probability of rain(converted to percentage) and forecast(along with probabilities)
         day_forecast["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time.strftime(format="%Y-%m-%d %H:%M:%S"))
-        day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))                                
-        day_forecast['humidity'][time_string] = str(int(model_object.humid_model().split(",")[0])*25)
+        day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))
+
+        #new model
+        processed_humid_data = config['humidity-model-object'].transform_data(model_object.feat)
+        humidity_value = config["humidity-model-object"].predict_humid(processed_humid_data)
+        day_forecast['humidity'][time_string] = str(int(humidity_value))
+        humid_model_output = model_object.humid_model()
         clouds = model_object.cloud_model()    
         rain = model_object.rain_model()             
         day_forecast['rain_probability'][time_string] = str(int(float(rain[2:])*100))
