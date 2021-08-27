@@ -136,7 +136,7 @@ def get_detailed_forecast(day,config,client_data):
             config["weather_condition"]["3"]:f"{weather_proba[3]/total_proba:.4f}",
             config["weather_condition"]["4"]:f"{weather_proba[4]/total_proba:.4f}",            
         }
-        day_forecast['rain_probability'][time_string] = str(int(weather_proba[3]/total_proba))
+#        day_forecast['rain_probability'][time_string] = str(int(weather_proba[3]/total_proba))
         # print(weath_dict)        
         # day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:str(float(all_conditions[1][2:6])/10.0),
         #                                         config["weather_condition"]["1"]:f"{float(all_conditions[2].lstrip()[:4])/10.0:.16f}",
