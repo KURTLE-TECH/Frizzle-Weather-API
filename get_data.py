@@ -5,7 +5,7 @@ from database import DynamodbHandler as db
 from math import sin,cos,asin,sqrt,radians
 from collections import defaultdict
 from Endpoint_Object import Endpoint_Object
-from models.humid_script import humid_model
+# from models.humid_script import humid_model
 import redis
 import random
 from json import loads
@@ -114,21 +114,19 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))
 
         #new model
-        processed_humid_data = config['humidity-model-object'].transform_data(model_object.feat)
-        humidity_value = config["humidity-model-object"].predict_humid(processed_humid_data)
-        day_forecast['humidity'][time_string] = str(int(humidity_value))
-        humid_model_output = model_object.humid_model()
+        # processed_humid_data = config['humidity-model-object'].transform_data(model_object.feat)
+        # humidity_value = config["humidity-model-object"].predict_humid(processed_humid_data)
+        # day_forecast['humidity'][time_string] = str(int(humidity_value))
+        # humid_model_output = model_object.humid_model()
+        day_forecast['humidity'][time_string] = str(int(model_object.humid_model().split(",")[0])*25)
         clouds = model_object.cloud_model()    
         rain = model_object.rain_model()             
         day_forecast['rain_probability'][time_string] = str(int(float(rain[2:])*100))
         
         weath = model_object.forecast_model()
-        # print(type(weath),weath)
         weather_proba = weath.split('"')[1]
-        # print(weather_proba)
-        # weather_proba = [f"{float(i.lstrip('[').rstrip(']')):.4f}" for i in list(weather_proba.split(","))]
         weather_proba = [float(i.lstrip('[').rstrip(']')) for i in list(weather_proba.split(","))]
-        # print(weather_proba)
+        
         total_proba = sum([i for i in weather_proba if weather_proba.index(i)!=2])        
         day_forecast["forecast"][time_string] = {
             config["weather_condition"]["0"]:f"{weather_proba[0]/total_proba:.4f}",
@@ -136,14 +134,7 @@ def get_detailed_forecast(day,config,client_data):
             config["weather_condition"]["3"]:f"{weather_proba[3]/total_proba:.4f}",
             config["weather_condition"]["4"]:f"{weather_proba[4]/total_proba:.4f}",            
         }
-#        day_forecast['rain_probability'][time_string] = str(int(weather_proba[3]/total_proba))
-        # print(weath_dict)        
-        # day_forecast["forecast"][time_string] = {config["weather_condition"]["0"]:str(float(all_conditions[1][2:6])/10.0),
-        #                                         config["weather_condition"]["1"]:f"{float(all_conditions[2].lstrip()[:4])/10.0:.16f}",
-        #                                         config["weather_condition"]["2"]:str(float(all_conditions[3].lstrip()[:4])/10.0),
-        #                                          config["weather_condition"]["3"]:f"{float(all_conditions[4].lstrip()[:4])/10.0:.16f}",
-        #                                          config["weather_condition"]["4"]:f"{float(all_conditions[5][:10].lstrip()[:4])/10.0:.16f}"
-        #                                         }        
+
         # day_forecast["forecast"][time_string] = {"sunny":str(random.random()),"cloudy":str(random.random()),"rainy":str(random.random()),"thunderstorm":str(random.random()),"drizzle":str(random.random())}
         day_forecast["feels like"] = str(random.randrange(0,50))
         day_forecast["dew_point"] = str(random.randrange(0,50))
