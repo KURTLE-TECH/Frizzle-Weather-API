@@ -16,17 +16,19 @@ import logging
 import pytz
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from math import ceil
-# from models.humid_script import humid_model
+from frizzle_models.humid_script import humid_model
+import h2o
+import os
 
 # external configuration; needs to be loaded from a json file
+h2o.connect(ip="localhost",port=54321)
+
 with open("config.json","r") as f:
     config = loads(f.read())
+    config['frizzle-humidity'] = h2o.load_model(os.getcwd()+config['models']['humidity-model-path'])
+    config['frizzle-humidity-wrapper'] = humid_model()
 
-    #for the upcoming himidity models
-
-    # humidity_model = humid_model()
-    # humidity_model.load_model(config["models"]["humidity-model-value"])
-    # config["humidity-model-object"] = humidity_model
+    
 
 redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"],port=config["redis_port"],db=0)
 models = dict()
@@ -37,6 +39,10 @@ weather_condition = config["weather_condition"]
 app = Flask(__name__)
 logging.basicConfig(filename='api_server.log', filemode="w", level=logging.INFO,format=config['log_format'])
 app.logger.setLevel(logging.INFO)
+
+#connect to h2o server
+
+
 
 
 @app.route('/api/status',methods=["GET","POST"])
@@ -130,5 +136,6 @@ def get_live_data():
     
 
 #load_models()
+
 if __name__ == "__main__":
     app.run(debug=True,port=5000)

@@ -114,11 +114,12 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))
 
         #new model
-        # processed_humid_data = config['humidity-model-object'].transform_data(model_object.feat)
-        # humidity_value = config["humidity-model-object"].predict_humid(processed_humid_data)
-        # day_forecast['humidity'][time_string] = str(int(humidity_value))
+        processed_humid_data = config['frizzle-humidity-wrapper'].transform_data(model_object.feat)
+        humidity_value = config["frizzle-humidity-wrapper"].predict_humid(processed_humid_data,config['frizzle-humidity'])
+        day_forecast['humidity'][time_string] = str(int(humidity_value))
         # humid_model_output = model_object.humid_model()
-        day_forecast['humidity'][time_string] = str(int(model_object.humid_model().split(",")[0])*25)
+        # day_forecast['humidity'][time_string] = str(int(model_object.humid_model().split(",")[0])*25)
+        _humidity = str(int(model_object.humid_model().split(",")[0])*25)
         clouds = model_object.cloud_model()    
         rain = model_object.rain_model()             
         day_forecast['rain_probability'][time_string] = str(int(float(rain[2:])*100))
