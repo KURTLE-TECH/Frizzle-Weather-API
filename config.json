@@ -11,7 +11,7 @@
         "temperature_model": "temp-model",
         "pressure_model": "press-model",
         "humidity_model": "hum-model",
-        "humidity-model-path": "/frizzle_models/Humidity_Model",
+        "humidity-model-path": "frizzle_models/Humidity_Model",
         "cloud_model": "cloud-model",
         "rain_model": "rain-model-final",
         "weath_model": "weath-test"

@@ -21,11 +21,11 @@ import h2o
 import os
 
 # external configuration; needs to be loaded from a json file
-h2o.connect(ip="localhost",port=54321)
+h2o.connect(ip="10.0.1.125",port=54321,verbose=False)
 
 with open("config.json","r") as f:
     config = loads(f.read())
-    config['frizzle-humidity'] = h2o.load_model(os.getcwd()+config['models']['humidity-model-path'])
+    config['frizzle-humidity'] = h2o.load_model(config["models"]["humidity-model-path"])
     config['frizzle-humidity-wrapper'] = humid_model()
 
     
@@ -80,7 +80,7 @@ def get_prediction():
         # print("End day calculation",datetime.now())
         #get the times for each day        
         forecasted_weather = dict()                
-        with ThreadPoolExecutor(max_workers=7) as e:            
+        with ThreadPoolExecutor(max_workers=10) as e:            
             futures = {e.submit(get_detailed_forecast,day,config,client_data):day for day in all_days}
             for future in as_completed(futures):
                 # print("Future value",futures[future])
