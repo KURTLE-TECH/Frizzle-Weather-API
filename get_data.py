@@ -10,6 +10,8 @@ import redis
 import random
 from json import loads
 from math import ceil
+import pandas as pd
+import h2o
 #start, end, intervals
 def get_prediction_times(**kwargs):
     try:
@@ -155,10 +157,36 @@ def get_default_forecast(time,config,client_data):
     weather_forecast['pressure'] = str(round(float(model_object.press_model()),1))                
     humidity = str(int(model_object.humid_model().split(",")[0])*25) 
     clouds = model_object.cloud_model()
-    rain = model_object.rain_model()
-    # weather_forecast['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))
+    # rain = model_object.rain_model()
+    # weather_forecast['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))    
+    # print(model_object.feat)
+    new_data = pd.DataFrame([model_object.feat],columns=['lat', 'lon', 'dayofweek', 'quarter', 'month', 'dayofyear',
+                'dayofmonth', 'weekofyear', 'year', 'temp', 'press', 'minutes','humidity','clouds_all'])
     
-    weather_forecast['rain_probability'] = str(int(float(rain[2:])*100))    
+    # print("Before:",new_data['clouds_all'])
+    new_data = new_data.reindex(columns=['lat', 'lon', 'temp','press','humidity','clouds_all','minutes','dayofweek',
+                'quarter','month','dayofyear','dayofmonth','weekofyear','year'])
+    
+    # print("THIS IS CLOUDS: ",new_data['clouds_all'])
+    new_data['minutes'] = str(int(float(new_data['minutes'])/60))    
+    new_data['clouds_all'] = str(int(new_data['clouds_all']))    
+    new_data.rename(columns = {'press':'pressure'}, inplace = True)
+    # new_data.rename(columns = {'minutes':'hour'}, inplace = True)
+    # print(new_data)
+    # print(type(new_data))
+    # new_data = new_data[['lat','lon','temp','pressure','humidity','clouds_all','minutes','dayofweek','quarter','month','dayofyear','dayofmonth']]            
+    rain = config['frizzle-rain'].predict(h2o.H2OFrame(new_data))
+    rain_op = h2o.as_list(rain)
+    rain_op_dict = rain_op.to_dict()
+    highest_class = rain_op_dict['predict'][0]
+    # print(highest_class)
+    highest_prob = rain_op_dict['p'+str(highest_class)][0] *100
+    # print(highest_prob)
+    
+    # print(rain_op_dict)
+    #print(rain_op('predict'))
+    # print("This is rain ",rain)    
+    weather_forecast['rain_probability'] = str(int(highest_prob))           
     weath = model_object.forecast_model()    
     # weather_forecast['forecast'] = config["weather_condition"][forecast.split(",")[0]]
     
@@ -174,6 +202,12 @@ def get_default_forecast(time,config,client_data):
     
     max_proba = max(all_proba.values())
     weather_forecast['forecast'] = [i for i in all_proba.keys() if all_proba[i]==max_proba][0]
+    if weather_forecast['forecast']=='sunny':
+        weather_forecast['rain_probability'] = 0
+
+    if weather_forecast['forecast']=='cloudy':
+        weather_forecast['rain_probability'] = highest_class
+
 
     return weather_forecast
 

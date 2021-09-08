@@ -26,6 +26,7 @@ h2o.connect(ip="10.0.1.125",port=54321,verbose=False)
 with open("config.json","r") as f:
     config = loads(f.read())
     config['frizzle-humidity'] = h2o.load_model(config["models"]["humidity-model-path"])
+    config['frizzle-rain'] = h2o.load_model(config["models"]["rain-model-path"])
     config['frizzle-humidity-wrapper'] = humid_model()
 
     
