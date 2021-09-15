@@ -8,10 +8,13 @@ from Endpoint_Object import Endpoint_Object
 # from models.humid_script import humid_model
 import redis
 import random
+import numpy as np
 from json import loads
 from math import ceil
 import pandas as pd
 import h2o
+from production_script.weather_forecast import Forecast
+import joblib
 #start, end, intervals
 def get_prediction_times(**kwargs):
     try:
@@ -96,7 +99,7 @@ def get_closest_half_hour(curr_time):
     return start_time
 
 def get_detailed_forecast(day,config,client_data):    
-    model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
+    
     all_times=list()
     if datetime.now(tz=pytz.timezone("Asia/Kolkata")).day == day.day:
         start_time = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata")))
@@ -104,41 +107,53 @@ def get_detailed_forecast(day,config,client_data):
     else:
         all_times = get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata")
     
-    # data structure for the prediction    
-    day_forecast = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{},"rain_probability":{}}
+    # data structure for the prediction   
+     
+    day_forecast = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{},"rain_probability":{},'clouds':{},'rain_class':{},"condition":{}}
+    model_object = Forecast()
     for time in all_times:
         time_string = time.strftime(format="%y-%m-%d %H:%M:%S")
         
 
         #working models
         # forecasts temperature, pressure, humidity, cloud, probability of rain(converted to percentage) and forecast(along with probabilities)
-        day_forecast["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time.strftime(format="%Y-%m-%d %H:%M:%S"))
-        day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))
-
-        #new model
-        processed_humid_data = config['frizzle-humidity-wrapper'].transform_data(model_object.feat)
-        humidity_value = config["frizzle-humidity-wrapper"].predict_humid(processed_humid_data,config['frizzle-humidity'])
-        day_forecast['humidity'][time_string] = str(int(humidity_value))
-        # humid_model_output = model_object.humid_model()
-        # day_forecast['humidity'][time_string] = str(int(model_object.humid_model().split(",")[0])*25)
-        _humidity = str(int(model_object.humid_model().split(",")[0])*25)
-        clouds = model_object.cloud_model()    
-        rain = model_object.rain_model()             
-        day_forecast['rain_probability'][time_string] = str(int(float(rain[2:])*100))
+        # day_forecast["temperature"][time_string] = model_object.temp_model(client_data['lat'],client_data['lng'],time.strftime(format="%Y-%m-%d %H:%M:%S"))
+        # day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))
         
-        weath = model_object.forecast_model()
-        weather_proba = weath.split('"')[1]
-        weather_proba = [float(i.lstrip('[').rstrip(']')) for i in list(weather_proba.split(","))]
-        
-        total_proba = sum([i for i in weather_proba if weather_proba.index(i)!=2])        
-        day_forecast["forecast"][time_string] = {
-            config["weather_condition"]["0"]:f"{weather_proba[0]/total_proba:.4f}",
-            config["weather_condition"]["1"]:f"{weather_proba[1]/total_proba:.4f}",
-            config["weather_condition"]["3"]:f"{weather_proba[3]/total_proba:.4f}",
-            config["weather_condition"]["4"]:f"{weather_proba[4]/total_proba:.4f}",            
-        }
+        body = model_object.transform_data(client_data['lat'],client_data['lng'],time_string)        
+        day_forecast["temperature"][time_string] = model_object.temp_forecast(body,config)
+        # print(weather_forecast['temp'])
+        body = np.append(body, day_forecast["temperature"][time_string]).reshape(1,-1)
 
-        # day_forecast["forecast"][time_string] = {"sunny":str(random.random()),"cloudy":str(random.random()),"rainy":str(random.random()),"thunderstorm":str(random.random()),"drizzle":str(random.random())}
+        day_forecast['pressure'][time_string] = model_object.press_forecast(body,config)[0]
+        body = np.append(body, day_forecast['pressure'][time_string]).reshape(1,-1)
+
+        day_forecast['humidity'][time_string] = model_object.humid_forecast(body,config)[0]
+        body = np.append(body, day_forecast['humidity'][time_string]).reshape(1,-1)
+
+        day_forecast['clouds'][time_string] = model_object.cloud_forecast(body,config)[0]
+        # print(day_forecast['clouds'][time_string])
+        body = np.append(body, day_forecast['clouds'][time_string]).reshape(1,-1)
+
+        rain_op = model_object.rain_forecast(body,config)
+        
+        day_forecast['rain_probability'][time_string] = int(rain_op[1][int(rain_op[0])]*100)
+        day_forecast['rain_class'][time_string] = int(rain_op[0])
+        body = np.append(body, rain_op[0]).reshape(1,-1)
+
+        weather_op = model_object.weath_forecast(body,config)
+
+        day_forecast["condition"][time_string] = config["weather_condition"][str(weather_op[0])]                
+        day_forecast['forecast'][time_string] = {config['weather_condition'][str(i)]:f"{weather_op[1][i]:.4f}" for i in range(5)}
+
+
+        day_forecast['temperature'][time_string] = str(int(day_forecast['temperature'][time_string]))
+        day_forecast['pressure'][time_string] = str(int(day_forecast['pressure'][time_string]))
+        day_forecast['humidity'][time_string] = str(int(day_forecast['humidity'][time_string]))
+        day_forecast['clouds'][time_string] = str(int(day_forecast['clouds'][time_string]))
+        day_forecast['rain_probability'][time_string] = str(int(day_forecast['rain_probability'][time_string]))
+        day_forecast['rain_class'][time_string] = str(int(day_forecast['rain_class'][time_string]))
+
         day_forecast["feels like"] = str(random.randrange(0,50))
         day_forecast["dew_point"] = str(random.randrange(0,50))
         day_forecast["Sunrise"] = "6 am"
@@ -149,67 +164,50 @@ def get_detailed_forecast(day,config,client_data):
     return day_forecast
 
 def get_default_forecast(time,config,client_data):
-    time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
-    model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
-    weather_forecast = dict()
+    try:
+        time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+        # model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
+        
+        model_object = Forecast()
+        weather_forecast = dict()
 
-    weather_forecast['temp'] = str(round(float(model_object.temp_model(client_data['lat'],client_data['lng'],time_string)),1))
-    weather_forecast['pressure'] = str(round(float(model_object.press_model()),1))                
-    humidity = str(int(model_object.humid_model().split(",")[0])*25) 
-    clouds = model_object.cloud_model()
-    # rain = model_object.rain_model()
-    # weather_forecast['rain_probability'] = str(ceil(float(rain.strip("\n").replace('"','').replace("[",'').replace("]",'').split(",")[2])*100))    
-    # print(model_object.feat)
-    new_data = pd.DataFrame([model_object.feat],columns=['lat', 'lon', 'dayofweek', 'quarter', 'month', 'dayofyear',
-                'dayofmonth', 'weekofyear', 'year', 'temp', 'press', 'minutes','humidity','clouds_all'])
-    
-    # print("Before:",new_data['clouds_all'])
-    new_data = new_data.reindex(columns=['lat', 'lon', 'temp','press','humidity','clouds_all','minutes','dayofweek',
-                'quarter','month','dayofyear','dayofmonth','weekofyear','year'])
-    
-    # print("THIS IS CLOUDS: ",new_data['clouds_all'])
-    new_data['minutes'] = str(int(float(new_data['minutes'])/60))    
-    new_data['clouds_all'] = str(int(new_data['clouds_all']))    
-    new_data.rename(columns = {'press':'pressure'}, inplace = True)
-    # new_data.rename(columns = {'minutes':'hour'}, inplace = True)
-    # print(new_data)
-    # print(type(new_data))
-    # new_data = new_data[['lat','lon','temp','pressure','humidity','clouds_all','minutes','dayofweek','quarter','month','dayofyear','dayofmonth']]            
-    rain = config['frizzle-rain'].predict(h2o.H2OFrame(new_data))
-    rain_op = h2o.as_list(rain)
-    rain_op_dict = rain_op.to_dict()
-    highest_class = rain_op_dict['predict'][0]
-    # print(highest_class)
-    highest_prob = rain_op_dict['p'+str(highest_class)][0] *100
-    # print(highest_prob)
-    
-    # print(rain_op_dict)
-    #print(rain_op('predict'))
-    # print("This is rain ",rain)    
-    weather_forecast['rain_probability'] = str(int(highest_prob))           
-    weath = model_object.forecast_model()    
-    # weather_forecast['forecast'] = config["weather_condition"][forecast.split(",")[0]]
-    
-    weather_proba = weath.split('"')[1]
-    weather_proba = [float(i.lstrip('[').rstrip(']')) for i in list(weather_proba.split(","))]        
-    total_proba = sum([i for i in weather_proba if weather_proba.index(i)!=2])        
-    all_proba = {
-            config["weather_condition"]["0"]:f"{weather_proba[0]/total_proba:.4f}",
-            config["weather_condition"]["1"]:f"{weather_proba[1]/total_proba:.4f}",
-            config["weather_condition"]["3"]:f"{weather_proba[3]/total_proba:.4f}",
-            config["weather_condition"]["4"]:f"{weather_proba[4]/total_proba:.4f}",            
-        }
-    
-    max_proba = max(all_proba.values())
-    weather_forecast['forecast'] = [i for i in all_proba.keys() if all_proba[i]==max_proba][0]
-    if weather_forecast['forecast']=='sunny':
-        weather_forecast['rain_probability'] = 0
+        body = model_object.transform_data(client_data['lat'],client_data['lng'],time_string)        
+        weather_forecast['temp'] = model_object.temp_forecast(body,config)[0]
+        # print(weather_forecast['temp'])
+        body = np.append(body, weather_forecast['temp']).reshape(1,-1)
 
-    if weather_forecast['forecast']=='cloudy':
-        weather_forecast['rain_probability'] = highest_class
+        weather_forecast['pressure'] = model_object.press_forecast(body,config)[0]
+        body = np.append(body, weather_forecast['pressure']).reshape(1,-1)
 
+        weather_forecast['humidity'] = model_object.humid_forecast(body,config)[0]
+        body = np.append(body, weather_forecast['humidity']).reshape(1,-1)
 
-    return weather_forecast
+        weather_forecast['clouds'] = model_object.cloud_forecast(body,config)[0]
+        # print(weather_forecast['clouds'])
+        body = np.append(body, weather_forecast['clouds']).reshape(1,-1)
+
+        rain_op = model_object.rain_forecast(body,config)
+        
+        weather_forecast['rain_probability'] = int(rain_op[1][int(rain_op[0])]*100)
+        weather_forecast['rain_class'] = int(rain_op[0])
+        body = np.append(body, rain_op[0]).reshape(1,-1)
+
+        
+        weather_op = model_object.weath_forecast(body,config)
+        
+        weather_forecast['forecast'] = config["weather_condition"][str(weather_op[0])]        
+        #formatting to string
+        weather_forecast['temp'] = str(int(weather_forecast['temp']))
+        weather_forecast['pressure'] = str(int(weather_forecast['pressure']))
+        weather_forecast['humidity'] = str(int(weather_forecast['humidity']))
+        weather_forecast['clouds'] = str(int(weather_forecast['clouds']))
+        weather_forecast['rain_probability'] = str(int(weather_forecast['rain_probability']))
+        weather_forecast['rain_class'] = str(int(weather_forecast['rain_class']))
+        return weather_forecast
+    except Exception as e:
+        (e.__traceback__.tb_lineno)
+        print(e)
+    
 
 def get_data_from_redis(cluster_end_point,node_id):
     try:        

@@ -19,15 +19,20 @@ from math import ceil
 from frizzle_models.humid_script import humid_model
 import h2o
 import os
+from production_script.weather_forecast import Forecast
 
 # external configuration; needs to be loaded from a json file
-h2o.connect(ip="10.0.1.125",port=54321,verbose=False)
+# h2o.connect(ip="localhost",port=54321,verbose=False)
 
 with open("config.json","r") as f:
-    config = loads(f.read())
-    config['frizzle-humidity'] = h2o.load_model(config["models"]["humidity-model-path"])
-    config['frizzle-rain'] = h2o.load_model(config["models"]["rain-model-path"])
+    config = loads(f.read())    
     config['frizzle-humidity-wrapper'] = humid_model()
+    config['temp_model'] = joblib.load('production_script/models/temp.sav')
+    config['press_model'] = joblib.load('production_script/models/press.sav')
+    config['humid_model'] = joblib.load('production_script/models/humid.sav')
+    config['cloud_model'] = joblib.load('production_script/models/clouds.sav')
+    config['rain_model'] = joblib.load('production_script/models/rain.sav')
+    config['weather_model'] = joblib.load('production_script/models/weath.sav')    
 
     
 
@@ -81,11 +86,13 @@ def get_prediction():
         # print("End day calculation",datetime.now())
         #get the times for each day        
         forecasted_weather = dict()                
-        with ThreadPoolExecutor(max_workers=10) as e:            
+        with ThreadPoolExecutor(max_workers=7) as e:            
             futures = {e.submit(get_detailed_forecast,day,config,client_data):day for day in all_days}
             for future in as_completed(futures):
                 # print("Future value",futures[future])
                 forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()
+        # for day in all_days:
+        #     forecasted_weather[day.strftime("%y-%m-%d")] = get_detailed_forecast(day,config,client_data)
 
             
         app.logger.info(get_log(logging.INFO,request,None))
@@ -113,7 +120,9 @@ def get_prediction():
                 for future in as_completed(futures):
                     # print("Future value",futures[future])
                     forecasted_weather[futures[future].strftime("%Y-%m-%d %H:%M:%S")] = future.result()                        
-        except Exception as e:                
+        except Exception as e:
+            app.logger.error("Line number "+e.__traceback__.tb_lineno)                
+            # print(e.__traceback__.)                
             app.logger.error(get_log(logging.ERROR,request,str(e)))
             return jsonify({"Status": "Failed", "Reason": str(e)})
         app.logger.info(get_log(logging.INFO,request,None))

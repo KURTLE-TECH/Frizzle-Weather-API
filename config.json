@@ -3,7 +3,13 @@
     "redis_host": "localhost",
     "redis_port": 6379,
     "region": "ap-south-1",
-    "weather_condition": { "0": "cloudy", "1": "sunny", "3": "rainy", "4": "drizzle" },
+    "weather_condition": {
+        "0": "cloudy",
+        "1": "sunny",
+        "2": "rainy",
+        "3": "thunderstorm",
+        "4": "drizzle"
+    },
 
     "access_key": "AKIAWY4ZKYYE5BL5SUUZ",
     "secret_access_key": "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",
