@@ -24,6 +24,9 @@ class Forecast(object):
         humid_pred = inv_boxcox(config['humid_model'].predict(body), 2.5)
         return humid_pred
 
+    def humid_class(self,body,config):
+        humid_pred = config['humid_class'].predict(body)
+        return humid_pred
     def cloud_forecast(self,body,config):
         cloud_pred = config['cloud_model'].predict(body)
         return cloud_pred

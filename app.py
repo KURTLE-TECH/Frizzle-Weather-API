@@ -20,16 +20,19 @@ from frizzle_models.humid_script import humid_model
 import h2o
 import os
 from production_script.weather_forecast import Forecast
+from werkzeug.middleware.profiler import ProfilerMiddleware
 
 # external configuration; needs to be loaded from a json file
 # h2o.connect(ip="localhost",port=54321,verbose=False)
 
 with open("config.json","r") as f:
     config = loads(f.read())    
+    # config['frizzle-humidity'] = h2o.load_model(os.getcwd()+"/"+config["models"]["humidity-model-path"])
     config['frizzle-humidity-wrapper'] = humid_model()
     config['temp_model'] = joblib.load('production_script/models/temp.sav')
     config['press_model'] = joblib.load('production_script/models/press.sav')
     config['humid_model'] = joblib.load('production_script/models/humid.sav')
+    config['humid_class'] = joblib.load('production_script/models/humidity_15_09_class.sav')
     config['cloud_model'] = joblib.load('production_script/models/clouds.sav')
     config['rain_model'] = joblib.load('production_script/models/rain.sav')
     config['weather_model'] = joblib.load('production_script/models/weath.sav')    
@@ -45,6 +48,7 @@ weather_condition = config["weather_condition"]
 app = Flask(__name__)
 logging.basicConfig(filename='api_server.log', filemode="w", level=logging.INFO,format=config['log_format'])
 app.logger.setLevel(logging.INFO)
+
 
 #connect to h2o server
 
@@ -62,7 +66,7 @@ def hello_world():
         return "Root method uses only GET, Please try again"
 
 
-@app.route('/api/get_prediction', methods=["GET"])
+@app.route('/api/get_prediction', methods=["GET","POST"])
 def get_prediction():
     curr_time = datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f")
     try:
@@ -128,7 +132,7 @@ def get_prediction():
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
 
-@app.route("/api/get_live_data",methods=["GET"])
+@app.route("/api/get_live_data",methods=["GET","POST"])
 def get_live_data():
     try:
         client_data = loads(request.data)

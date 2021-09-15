@@ -15,6 +15,7 @@ import pandas as pd
 import h2o
 from production_script.weather_forecast import Forecast
 import joblib
+import copy
 #start, end, intervals
 def get_prediction_times(**kwargs):
     try:
@@ -128,20 +129,31 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['pressure'][time_string] = model_object.press_forecast(body,config)[0]
         body = np.append(body, day_forecast['pressure'][time_string]).reshape(1,-1)
 
-        day_forecast['humidity'][time_string] = model_object.humid_forecast(body,config)[0]
-        body = np.append(body, day_forecast['humidity'][time_string]).reshape(1,-1)
+        humid_reg_body = copy.deepcopy(body)
+        humid_class_body = copy.deepcopy(body)
 
-        day_forecast['clouds'][time_string] = model_object.cloud_forecast(body,config)[0]
-        # print(day_forecast['clouds'][time_string])
-        body = np.append(body, day_forecast['clouds'][time_string]).reshape(1,-1)
+        # splitting into 2 as clouds work better with regression and rain works better with classification
+        day_forecast['humidity'][time_string] = model_object.humid_forecast(humid_reg_body,config)[0]
+        humid_reg_body = np.append(humid_reg_body, day_forecast['humidity'][time_string]).reshape(1,-1)
 
-        rain_op = model_object.rain_forecast(body,config)
+        humidity_class = model_object.humid_class(humid_class_body,config)
+        humid_class_body = np.append(humid_class_body, humidity_class).reshape(1,-1)
+        
+
+        clouds = model_object.cloud_forecast(humid_reg_body,config)[0]
+        humid_reg_body = np.append(humid_reg_body, clouds).reshape(1,-1)
+        humid_class_body = np.append(humid_class_body, clouds).reshape(1,-1)
+
+        
+    
+        rain_op = model_object.rain_forecast(humid_class_body,config)
         
         day_forecast['rain_probability'][time_string] = int(rain_op[1][int(rain_op[0])]*100)
         day_forecast['rain_class'][time_string] = int(rain_op[0])
-        body = np.append(body, rain_op[0]).reshape(1,-1)
+        humid_reg_body = np.append(humid_reg_body, rain_op[0]).reshape(1,-1)
 
-        weather_op = model_object.weath_forecast(body,config)
+        
+        weather_op = model_object.weath_forecast(humid_reg_body,config)
 
         day_forecast["condition"][time_string] = config["weather_condition"][str(weather_op[0])]                
         day_forecast['forecast'][time_string] = {config['weather_condition'][str(i)]:f"{weather_op[1][i]:.4f}" for i in range(5)}
@@ -150,7 +162,7 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['temperature'][time_string] = str(int(day_forecast['temperature'][time_string]))
         day_forecast['pressure'][time_string] = str(int(day_forecast['pressure'][time_string]))
         day_forecast['humidity'][time_string] = str(int(day_forecast['humidity'][time_string]))
-        day_forecast['clouds'][time_string] = str(int(day_forecast['clouds'][time_string]))
+        # day_forecast['clouds'][time_string] = str(int(day_forecast['clouds'][time_string]))
         day_forecast['rain_probability'][time_string] = str(int(day_forecast['rain_probability'][time_string]))
         day_forecast['rain_class'][time_string] = str(int(day_forecast['rain_class'][time_string]))
 
@@ -179,28 +191,38 @@ def get_default_forecast(time,config,client_data):
         weather_forecast['pressure'] = model_object.press_forecast(body,config)[0]
         body = np.append(body, weather_forecast['pressure']).reshape(1,-1)
 
-        weather_forecast['humidity'] = model_object.humid_forecast(body,config)[0]
-        body = np.append(body, weather_forecast['humidity']).reshape(1,-1)
+        humid_reg_body = copy.deepcopy(body)
+        humid_class_body = copy.deepcopy(body)
 
-        weather_forecast['clouds'] = model_object.cloud_forecast(body,config)[0]
-        # print(weather_forecast['clouds'])
-        body = np.append(body, weather_forecast['clouds']).reshape(1,-1)
+        # splitting into 2 as clouds work better with regression and rain works better with classification
+        weather_forecast['humidity'] = model_object.humid_forecast(humid_reg_body,config)[0]
+        humid_reg_body = np.append(humid_reg_body, weather_forecast['humidity']).reshape(1,-1)
 
-        rain_op = model_object.rain_forecast(body,config)
+        humidity_class = model_object.humid_class(humid_class_body,config)
+        humid_class_body = np.append(humid_class_body, humidity_class).reshape(1,-1)
+        # print(humidity_class[0])
+
+        clouds = model_object.cloud_forecast(humid_reg_body,config)[0]
+        humid_reg_body = np.append(humid_reg_body, clouds).reshape(1,-1)
+        humid_class_body = np.append(humid_class_body, clouds).reshape(1,-1)
+
+        
+    
+        rain_op = model_object.rain_forecast(humid_class_body,config)
         
         weather_forecast['rain_probability'] = int(rain_op[1][int(rain_op[0])]*100)
         weather_forecast['rain_class'] = int(rain_op[0])
-        body = np.append(body, rain_op[0]).reshape(1,-1)
+        humid_reg_body = np.append(humid_reg_body, rain_op[0]).reshape(1,-1)
 
         
-        weather_op = model_object.weath_forecast(body,config)
+        weather_op = model_object.weath_forecast(humid_reg_body,config)
         
         weather_forecast['forecast'] = config["weather_condition"][str(weather_op[0])]        
         #formatting to string
         weather_forecast['temp'] = str(int(weather_forecast['temp']))
         weather_forecast['pressure'] = str(int(weather_forecast['pressure']))
         weather_forecast['humidity'] = str(int(weather_forecast['humidity']))
-        weather_forecast['clouds'] = str(int(weather_forecast['clouds']))
+        # weather_forecast['clouds'] = str(int(weather_forecast['clouds']))
         weather_forecast['rain_probability'] = str(int(weather_forecast['rain_probability']))
         weather_forecast['rain_class'] = str(int(weather_forecast['rain_class']))
         return weather_forecast
