@@ -73,8 +73,8 @@ def get_prediction():
         client_data = loads(request.data)
         request_type = request.args.get('type')
         location = dict()
-        location['lat'] = client_data['lat']
-        location['lng'] = client_data['lng']
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])        
         # print(client_data)
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,e.__str__))
