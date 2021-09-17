@@ -113,7 +113,7 @@ def get_detailed_forecast(day,config,client_data):
     day_forecast = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{},"rain_probability":{},'clouds':{},'rain_class':{},"condition":{}}
     model_object = Forecast()
     for time in all_times:
-        time_string = time.strftime(format="%y-%m-%d %H:%M:%S")
+        time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
         
 
         #working models
@@ -122,6 +122,7 @@ def get_detailed_forecast(day,config,client_data):
         # day_forecast['pressure'][time_string] = str(round(float(model_object.press_model()),1))
         
         body = model_object.transform_data(client_data['lat'],client_data['lng'],time_string)        
+        # time_string = time.strftime(format="%y-%m-%d %H:%M:%S")            
         day_forecast["temperature"][time_string] = model_object.temp_forecast(body,config)
         # print(weather_forecast['temp'])
         body = np.append(body, day_forecast["temperature"][time_string]).reshape(1,-1)
