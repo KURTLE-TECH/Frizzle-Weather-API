@@ -39,6 +39,7 @@ firebase==3.0.1
 FLAML==0.6.3
 Flask==1.1.2
 Flask-Assets==2.0
+flask-cors
 flatbuffers==1.12
 future==0.18.2
 fuzzywuzzy==0.18.0

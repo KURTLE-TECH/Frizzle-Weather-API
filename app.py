@@ -6,6 +6,7 @@ import redis
 import joblib
 import base64
 from flask import Flask, request, jsonify
+from flask_cors import CORS, cross_origin
 from json import loads
 from datetime import datetime
 #from WeatherModel import api_model_pipeline
@@ -48,6 +49,9 @@ weather_condition = config["weather_condition"]
 app = Flask(__name__)
 logging.basicConfig(filename='api_server.log', filemode="w", level=logging.INFO,format=config['log_format'])
 app.logger.setLevel(logging.INFO)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
+
 
 
 #connect to h2o server
@@ -56,6 +60,7 @@ app.logger.setLevel(logging.INFO)
 
 
 @app.route('/api/status',methods=["GET","POST"])
+@cross_origin()
 def hello_world():
     
     if request.method == "GET":
@@ -63,10 +68,11 @@ def hello_world():
         return 'Hello, World!'
     else:
         app.logger.error(get_log(logging.ERROR,request,"Wrong method"))
-        return "Root method uses only GET, Please try again"
+        return "Root method uses only GET, Please try again!"
 
 
 @app.route('/api/get_prediction', methods=["GET","POST"])
+@cross_origin()
 def get_prediction():
     curr_time = datetime.now().strftime(format="%y-%m-%d %H:%M:%S:%f")
     try:
@@ -133,6 +139,7 @@ def get_prediction():
         return jsonify(forecasted_weather)
 
 @app.route("/api/get_live_data",methods=["GET","POST"])
+@cross_origin()
 def get_live_data():
     try:
         client_data = loads(request.data)
