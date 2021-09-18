@@ -107,7 +107,16 @@ def get_prediction():
             
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
-                
+
+    elif request_type == "particular":
+        try:
+            forecast = get_default_forecast(datetime.now(tz=pytz.timezone("Asia/Kolkata")),config,client_data)
+            app.logger.info(get_log(logging.INFO,request,None))
+            return {"condition":forecast["forecast"],"temperature":forecast["temp"]}
+        except Exception as e:
+            app.logger.error(get_log(logging.ERROR,request,str(e)))
+            return jsonify({"Status": "Failed", "Reason": str(e)})
+
 
     elif request_type == "default":
         forecasted_weather = defaultdict()
@@ -155,6 +164,26 @@ def get_live_data():
     app.logger.info(get_log(logging.info,request,None))    
     return data
     
+@app.route("/api/closest_node",methods=["GET","POST"])
+@cross_origin()
+def closest_node():
+    try:
+        client_data = loads(request.data)
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])
+        
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to load client data"))
+        return {}
+    try:
+        data = get_closest_node(client_data)
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
+        return {"Status":"failed","reason":str(e)}        
+    app.logger.info(get_log(logging.info,request,None))    
+    return {"Node ID":data}
+    
+
 
 #load_models()
 
