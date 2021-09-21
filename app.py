@@ -5,8 +5,10 @@ import boto3
 import redis
 import joblib
 import base64
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS, cross_origin
+import pdfkit
+from PyPDF2 import PdfFileMerger
 from json import loads
 from datetime import datetime
 #from WeatherModel import api_model_pipeline
@@ -70,6 +72,39 @@ def hello_world():
         app.logger.error(get_log(logging.ERROR,request,"Wrong method"))
         return "Root method uses only GET, Please try again!"
 
+@app.route('/api/generate_report', methods=["GET","POST"])
+@cross_origin()
+def gen_report():
+    try:
+        client_data = loads(request.data)
+        location = dict()
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])
+        options = {
+            'page-size': 'Letter',
+            'encoding': "UTF-8",
+            'no-outline': None,
+            'orientation': 'Landscape'
+        }
+
+        pdfkit.from_url('report_templates/cover.html', 'report_templates/cover.pdf', options = options)
+        pdfkit.from_url('report_templates/mid.html', 'report_templates/mid.pdf', options = options)
+        pdfkit.from_url('report_templates/forecast.html', 'report_templates/forecast.pdf', options = options)
+        pdfs = ['report_templates/cover.pdf', 'report_templates/mid.pdf', 'report_templates/forecast.pdf']
+
+        merger = PdfFileMerger()
+
+        for pdf in pdfs:
+            merger.append(pdf)
+
+        merger.write("report_templates/report.pdf")
+        merger.close()
+        return send_file("report_templates/report.pdf", mimetype='application/pdf')
+
+
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR, request, e.__str__))
+        return jsonify({"Status": "Failed", "Reason": str(e)})
 
 @app.route('/api/get_prediction', methods=["GET","POST"])
 @cross_origin()
