@@ -76,10 +76,10 @@ def hello_world():
 @cross_origin()
 def gen_report():
     try:
-        client_data = loads(request.data)
-        location = dict()
-        client_data['lat'] = float(client_data['lat'])
-        client_data['lng'] = float(client_data['lng'])
+        # client_data = loads(request.data)
+        # location = dict()
+        # client_data['lat'] = float(client_data['lat'])
+        # client_data['lng'] = float(client_data['lng'])
         options = {
             'page-size': 'Letter',
             'encoding': "UTF-8",
