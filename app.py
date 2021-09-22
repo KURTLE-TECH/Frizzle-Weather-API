@@ -169,7 +169,7 @@ def gen_report():
             pdfFiles.append(f'report_templates/stats{page}.pdf')
 
             current_forecast = forecast_template.replace("{{data}}", forecast_data)
-            pdfkit.from_string(current_stats, f'report_templates/forecast{page}.pdf', options = options)
+            pdfkit.from_string(current_forecast, f'report_templates/forecast{page}.pdf', options = options)
             pdfFiles.append(f'report_templates/forecast{page}.pdf')
 
             
