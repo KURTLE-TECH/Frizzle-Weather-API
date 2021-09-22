@@ -141,14 +141,14 @@ def gen_report():
             rain_data = []
             pressure_data = []
             humidity_data = []
-            forecast_data = []
+            condition_data = []
             for time in forecasted_weather[date]['temperature']:
                 times.append(format_time(time))
                 temp_data.append(forecasted_weather[date]['temperature'][time])
                 rain_data.append(forecasted_weather[date]['rain_probability'][time])
                 pressure_data.append(forecasted_weather[date]['pressure'][time])
                 humidity_data.append(forecasted_weather[date]['humidity'][time])
-                forecast_data.append(forecasted_weather[date]['condition'][time])
+                condition_data.append(forecasted_weather[date]['condition'][time])
 
             num_rows = ceil(len(times) / 2)
             stats_data = ""
@@ -158,10 +158,10 @@ def gen_report():
                     stats_data += gen_html_stats_data(times[i], temp_data[i], pressure_data[i], humidity_data[i], rain_data[i],
                     times[i + num_rows], temp_data[i + num_rows], pressure_data[i + num_rows], humidity_data[i + num_rows], rain_data[i + num_rows])
 
-                    forecast_data += gen_html_forecast_data(times[i], forecast_data[i], times[i + num_rows], forecast_data[i + num_rows])
+                    forecast_data += gen_html_forecast_data(times[i], condition_data[i], times[i + num_rows], condition_data[i + num_rows])
                 else:
                     stats_data += gen_html_stats_data(times[i], temp_data[i], pressure_data[i], humidity_data[i], rain_data[i], "-", "-", "-", "-", "-")
-                    forecast_data += gen_html_forecast_data(times[i], forecast_data[i], "-". "-")
+                    forecast_data += gen_html_forecast_data(times[i], condition_data[i], "-". "-")
             
             current_stats = stats_template.replace("{{data}}", stats_data)
             current_stats = current_stats.replace("{{date}}", date)            
