@@ -151,7 +151,7 @@ def gen_report():
         pdfFiles.append('report_templates/mid.pdf')
 
         page = 0
-        dates = forecasted_weather.keys()
+        dates = list(forecasted_weather.keys())
         dates.sort()
         for date in dates:
             times = []
