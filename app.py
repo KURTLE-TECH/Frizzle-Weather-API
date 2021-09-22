@@ -76,10 +76,47 @@ def hello_world():
 @cross_origin()
 def gen_report():
     try:
-        # client_data = loads(request.data)
-        # location = dict()
-        # client_data['lat'] = float(client_data['lat'])
-        # client_data['lng'] = float(client_data['lng'])
+        client_data = loads(request.data)
+        location = dict()
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])
+
+        
+        all_days = get_prediction_times(start_day=datetime.now(), interval=None, days=6, time_zone="Asia/Kolkata")
+        forecasted_weather = dict()
+        with ThreadPoolExecutor(max_workers=7) as e:
+            futures = {e.submit(get_detailed_forecast, day, config, client_data):day for day in all_days}
+            for future in as_completed(futures):
+                forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()
+        
+        def format_time(time):
+            time_part = time.split(" ")[1]
+            hh, mm, ss = time_part.split(":")
+            return ":".join([hh, mm])            
+
+        def gen_html_stats_data(time1, temp1, pressure1, humidity1, rain1, time2, temp2, pressure2, humidity2, rain2):
+            return f"""
+                <tr>
+                    <td class="time">{time1}</td>
+                    <td class="forecast">{temp1}&deg;C</td>
+                    <td class="forecast">{pressure1}</td>
+                    <td class="forecast">{humidity1}%</td>
+                    <td class="forecast">{rain1}%</td>
+                    <td class="time">{time2}</td>
+                    <td class="forecast">{temp2}&deg;C</td>
+                    <td class="forecast">{pressure2}</td>
+                    <td class="forecast">{humidity2}%</td>
+                    <td class="forecast">{rain2}%</td>
+                </tr>
+            """
+        stats_template = ""
+        forecast_template = ""
+        with open("report_templates/stats.html") as stats_html:
+            stats_template = stats_html.read()
+        
+        with open("report_templates/forecast.html") as forecast_html:
+            forecast_template = forecast_html.read()
+
         options = {
             'page-size': 'Letter',
             'encoding': "UTF-8",
@@ -87,14 +124,41 @@ def gen_report():
             'orientation': 'Landscape'
         }
 
-        pdfkit.from_url('report_templates/cover.html', 'report_templates/cover.pdf', options = options)
-        pdfkit.from_url('report_templates/mid.html', 'report_templates/mid.pdf', options = options)
-        pdfkit.from_url('report_templates/forecast.html', 'report_templates/forecast.pdf', options = options)
-        pdfs = ['report_templates/cover.pdf', 'report_templates/mid.pdf', 'report_templates/forecast.pdf']
+        pdfFiles = []
+        page = 0
+        for date in forecasted_weather:
+            times = []
+            temp_data = []
+            rain_data = []
+            pressure_data = []
+            humidity_data = []
+            for time in forecasted_weather[date]['temperature']:
+                times.append(format_time(time))
+                temp_data.append(forecasted_weather[date]['temperature'][time])
+                rain_data.append(forecasted_weather[date]['rain_probability'][time])
+                pressure_data.append(forecasted_weather[date]['pressure'][time])
+                humidity_data.append(forecasted_weather[date]['humidity'][time])
+
+            num_rows = ceil(len(times) / 2)
+            stats_data = ""
+            for i in range(num_rows):
+                if i + num_rows < len(times):
+                    stats_data += gen_html_stats_data(times[i], temp_data[i], pressure_data[i], humidity_data[i], rain_data[i],
+                    times[i + num_rows], temp_data[i + num_rows], pressure_data[i + num_rows], humidity_data[i + num_rows], rain_data[i + num_rows])
+                else:
+                    stats_data += gen_html_stats_data(times[i], temp_data[i], pressure_data[i], humidity_data[i], rain_data[i], "-", "-", "-", "-", "-")
+            
+            current_stats = stats_html.replace("{{data}}", stats_data)
+            current_stats = current_stats.replace("{{data}}", date)
+            pdfkit.from_string(current_stats, f'report_templates/stats{page}.pdf', options = options)
+            pdfFiles.append(f'report_templates/stats{page}.pdf')
+
+            page += 1
+            
 
         merger = PdfFileMerger()
 
-        for pdf in pdfs:
+        for pdf in pdfFiles:
             merger.append(pdf)
 
         merger.write("report_templates/report.pdf")
