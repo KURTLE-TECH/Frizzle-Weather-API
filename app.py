@@ -109,6 +109,15 @@ def gen_report():
                     <td class="forecast">{rain2}%</td>
                 </tr>
             """
+        def gen_html_forecast_data(time1, forecast1, time2, forecast2):
+            return f"""
+                <tr>
+                    <td class="time">{time1}</td>
+                    <td class="forecast">{forecast1}</td>
+                    <td class="time">{time2}</td>
+                    <td class="forecast">{forecast2}</td>
+                </tr>
+            """
         stats_template = ""
         forecast_template = ""
         with open("report_templates/stats.html") as stats_html:
@@ -132,27 +141,38 @@ def gen_report():
             rain_data = []
             pressure_data = []
             humidity_data = []
+            forecast_data = []
             for time in forecasted_weather[date]['temperature']:
                 times.append(format_time(time))
                 temp_data.append(forecasted_weather[date]['temperature'][time])
                 rain_data.append(forecasted_weather[date]['rain_probability'][time])
                 pressure_data.append(forecasted_weather[date]['pressure'][time])
                 humidity_data.append(forecasted_weather[date]['humidity'][time])
+                forecast_data.append(forecasted_weather[date]['condition'][time])
 
             num_rows = ceil(len(times) / 2)
             stats_data = ""
+            forecast_data = ""
             for i in range(num_rows):
                 if i + num_rows < len(times):
                     stats_data += gen_html_stats_data(times[i], temp_data[i], pressure_data[i], humidity_data[i], rain_data[i],
                     times[i + num_rows], temp_data[i + num_rows], pressure_data[i + num_rows], humidity_data[i + num_rows], rain_data[i + num_rows])
+
+                    forecast_data += gen_html_forecast_data(times[i], forecast_data[i], times[i + num_rows], forecast_data[i + num_rows])
                 else:
                     stats_data += gen_html_stats_data(times[i], temp_data[i], pressure_data[i], humidity_data[i], rain_data[i], "-", "-", "-", "-", "-")
+                    forecast_data += gen_html_forecast_data(times[i], forecast_data[i], "-". "-")
             
             current_stats = stats_template.replace("{{data}}", stats_data)
-            current_stats = current_stats.replace("{{date}}", date)
+            current_stats = current_stats.replace("{{date}}", date)            
             pdfkit.from_string(current_stats, f'report_templates/stats{page}.pdf', options = options)
             pdfFiles.append(f'report_templates/stats{page}.pdf')
 
+            current_forecast = forecast_template.replace("{{data}}", forecast_data)
+            pdfkit.from_string(current_stats, f'report_templates/forecast{page}.pdf', options = options)
+            pdfFiles.append(f'report_templates/forecast{page}.pdf')
+
+            
             page += 1
             
 
