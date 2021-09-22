@@ -148,7 +148,7 @@ def gen_report():
                 else:
                     stats_data += gen_html_stats_data(times[i], temp_data[i], pressure_data[i], humidity_data[i], rain_data[i], "-", "-", "-", "-", "-")
             
-            current_stats = stats_html.replace("{{data}}", stats_data)
+            current_stats = stats_template.replace("{{data}}", stats_data)
             current_stats = current_stats.replace("{{date}}", date)
             pdfkit.from_string(current_stats, f'report_templates/stats{page}.pdf', options = options)
             pdfFiles.append(f'report_templates/stats{page}.pdf')
