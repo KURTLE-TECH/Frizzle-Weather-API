@@ -16,7 +16,11 @@ import h2o
 from production_script.weather_forecast import Forecast
 import joblib
 import copy
-#start, end, intervals
+import requests
+from sun_data import get_extra_info
+
+
+
 def get_prediction_times(**kwargs):
     try:
         time_zone = pytz.timezone(kwargs['time_zone'])  
@@ -80,7 +84,7 @@ def get_closest_node(location):
             except Exception:
                 continue    
             
-        return distances[min(distances.keys())]
+        return distances
         
     elif 'status' in response.keys():
         return None
@@ -110,7 +114,7 @@ def get_detailed_forecast(day,config,client_data):
     
     # data structure for the prediction   
      
-    day_forecast = {"temperature":{},"pressure":{},"humidity":{},"rain":{},"forecast":{},"rain_probability":{},'clouds':{},'rain_class':{},"condition":{}}
+    day_forecast = {"temperature":{},"pressure":{},"humidity":{},"forecast":{},"rain_probability":{},'rain_class':{},"condition":{}}
     model_object = Forecast()
     for time in all_times:
         time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
@@ -167,13 +171,18 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['rain_probability'][time_string] = str(int(day_forecast['rain_probability'][time_string]))
         day_forecast['rain_class'][time_string] = str(int(day_forecast['rain_class'][time_string]))
 
-        day_forecast["feels like"] = str(random.randrange(0,50))
-        day_forecast["dew_point"] = str(random.randrange(0,50))
-        day_forecast["Sunrise"] = "6 am"
-        day_forecast["Sunset"] = "6 pm"
-        day_forecast["UV Index"] = "5.5"
-        day_forecast["Daylight"] = "11"            
-        day_forecast["wind_speed"] = "125"            
+    day_forecast["feels like"] = str(random.randrange(0,50))
+    day_forecast["dew_point"] = str(random.randrange(0,50))
+    print(day)
+    sun_data = get_extra_info(client_data['lat'],client_data['lng'],day)
+    day_forecast["Sunrise"] = sun_data["Sunrise"]
+    day_forecast["Sunset"] = sun_data["Sunset"]
+    day_forecast["Daylight"] = sun_data["Daylight"]
+    # day_forecast["UV Index"] = sun_data["UV Index"]
+    # day_forecast["Sunset"] = "6 pm"
+    # day_forecast["UV Index"] = "5.5"
+    # day_forecast["Daylight"] = "11"            
+    # day_forecast["wind_speed"] = "125"            
     return day_forecast
 
 def get_default_forecast(time,config,client_data):
