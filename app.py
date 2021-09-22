@@ -161,7 +161,7 @@ def gen_report():
                     forecast_data += gen_html_forecast_data(times[i], condition_data[i], times[i + num_rows], condition_data[i + num_rows])
                 else:
                     stats_data += gen_html_stats_data(times[i], temp_data[i], pressure_data[i], humidity_data[i], rain_data[i], "-", "-", "-", "-", "-")
-                    forecast_data += gen_html_forecast_data(times[i], condition_data[i], "-". "-")
+                    forecast_data += gen_html_forecast_data(times[i], condition_data[i], "-", "-")
             
             current_stats = stats_template.replace("{{data}}", stats_data)
             current_stats = current_stats.replace("{{date}}", date)            
