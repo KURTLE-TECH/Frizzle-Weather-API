@@ -120,11 +120,19 @@ def gen_report():
             """
         stats_template = ""
         forecast_template = ""
+        cover_template = ""
+        mid_template = ""
         with open("report_templates/stats.html") as stats_html:
             stats_template = stats_html.read()
         
         with open("report_templates/forecast.html") as forecast_html:
             forecast_template = forecast_html.read()
+
+        with open("report_templates/cover.html") as cover_html:
+            cover_template = cover_html.read()
+
+        with open("report_templates/mid.html") as mid_html:
+            mid_template = mid_html.read()
 
         options = {
             'page-size': 'Letter',
@@ -134,8 +142,18 @@ def gen_report():
         }
 
         pdfFiles = []
+
+        current_cover = cover_template.replace("{{location}}", f"({client_data['lat']}, {client_data['lng']})")
+        pdfkit.from_string(cover_template, 'report_templates/cover.pdf', options = options)
+        pdfFiles.append('report_templates/cover.pdf')
+
+        pdfkit.from_string(mid_template, 'report_templates/mid.pdf', options = options)
+        pdfFiles.append('report_templates/mid.pdf')
+
         page = 0
-        for date in forecasted_weather:
+        dates = forecasted_weather.keys()
+        dates.sort()
+        for date in dates:
             times = []
             temp_data = []
             rain_data = []
