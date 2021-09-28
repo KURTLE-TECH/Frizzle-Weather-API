@@ -234,6 +234,9 @@ def get_default_forecast(time,config,client_data):
         weather_forecast['humidity'] = str(int(weather_forecast['humidity']))
         # weather_forecast['clouds'] = str(int(weather_forecast['clouds']))
         weather_forecast['rain_probability'] = str(int(weather_forecast['rain_probability']))
+
+        #the rain part should show the strength/probabolity of the weather condition and that number will replace rain probability in the dashboard
+        weather_forecast['rain_probability'] = str(int(weather_op[1][weather_op[0]]*100))
         weather_forecast['rain_class'] = str(int(weather_forecast['rain_class']))
         return weather_forecast
     except Exception as e:
