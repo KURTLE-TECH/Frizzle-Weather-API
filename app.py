@@ -251,7 +251,7 @@ def get_prediction():
         try:
             forecast = get_default_forecast(datetime.now(tz=pytz.timezone("Asia/Kolkata")),config,client_data)
             app.logger.info(get_log(logging.INFO,request,None))
-            return {"condition":forecast["forecast"],"temperature":forecast["temp"]}
+            return jsonify({"condition":forecast["forecast"],"temperature":forecast["temp"]})
         except Exception as e:
             app.logger.error(get_log(logging.ERROR,request,str(e)))
             return jsonify({"Status": "Failed", "Reason": str(e)})
