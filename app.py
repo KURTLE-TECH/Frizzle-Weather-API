@@ -251,14 +251,16 @@ def get_prediction():
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
 
-    elif request_type == "particular":
-        try:
-            forecast = get_default_forecast(datetime.now(tz=pytz.timezone("Asia/Kolkata")),config,client_data)
-            app.logger.info(get_log(logging.INFO,request,None))
-            return {"condition":forecast["forecast"],"temperature":forecast["temp"]}
-        except Exception as e:
-            app.logger.error(get_log(logging.ERROR,request,str(e)))
-            return jsonify({"Status": "Failed", "Reason": str(e)})
+    # elif request_type == "particular":
+    #     try:
+    #         print("Particular time",datetime.now(tz=pytz.timezone("Asia/Kolkata")))
+    #         forecast = get_default_forecast(datetime.now(tz=pytz.timezone("Asia/Kolkata")),config,client_data)
+    #         app.logger.info(get_log(logging.INFO,request,None))
+    #         return jsonify({"condition":forecast["forecast"],"temperature":forecast["temp"]})
+
+    #     except Exception as e:
+    #         app.logger.error(get_log(logging.ERROR,request,str(e)))
+    #         return jsonify({"Status": "Failed", "Reason": str(e)})
 
 
     elif request_type == "default":
@@ -289,6 +291,30 @@ def get_prediction():
             return jsonify({"Status": "Failed", "Reason": str(e)})
         app.logger.info(get_log(logging.INFO,request,None))
         return jsonify(forecasted_weather)
+
+
+@app.route("/api/live_prediction",methods=["POST"])
+@cross_origin()
+def live_prediction():
+    try:
+        client_data = loads(request.data)        
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])        
+        # print(client_data)
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,e.__str__))
+        return jsonify({"Status": "Failed", "Reason": str(e)})
+
+    try:           
+        curr_time = datetime.now(tz=pytz.timezone("Asia/Kolkata"))
+        forecast_today = get_default_forecast(curr_time,config,client_data)
+        app.logger.info(get_log(logging.INFO,request,None))
+        return jsonify({"condition":forecast_today["forecast"],"temperature":forecast_today["temp"]})
+
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)))
+        return jsonify({"Status": "Failed", "Reason": str(e)})
+
 
 @app.route("/api/get_live_data",methods=["GET","POST"])
 @cross_origin()
