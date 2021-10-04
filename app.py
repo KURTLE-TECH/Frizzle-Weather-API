@@ -146,7 +146,11 @@ def gen_report():
         dates = list(forecasted_weather.keys())
         dates.sort()
 
-        current_cover = cover_template.replace("{{location}}", f"({client_data['lat']}, {client_data['lng']})")
+        if client_data["address"]:
+            current_cover = cover_template.replace("{{location}}", client_data["address"])
+        else:
+            current_cover = cover_template.replace("{{location}}", f"({client_data['lat']}, {client_data['lng']})")
+
         current_cover = current_cover.replace("{{period}}", f"{dates[0]} - {dates[-1]}")
         pdfkit.from_string(current_cover, 'report_templates/cover.pdf', options = options)
         pdfFiles.append('report_templates/cover.pdf')
