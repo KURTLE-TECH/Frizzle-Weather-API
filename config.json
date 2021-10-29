@@ -1,6 +1,6 @@
 {
     "log_format": "Level:%(levelname)s %(asctime)s : %(message)s",
-    "redis_host": "localhost",
+    "redis_host": "api.frizzleweather.com",
     "redis_port": 6379,
     "region": "ap-south-1",
     "weather_condition": {
@@ -10,7 +10,7 @@
         "3": "rainy",
         "4": "overcast"
     },
-
+    "request_info_table":"Request-Info",
     "access_key": "AKIAWY4ZKYYE5BL5SUUZ",
     "secret_access_key": "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",
     "models": {

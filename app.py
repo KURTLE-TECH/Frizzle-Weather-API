@@ -3,6 +3,7 @@ import random
 import threading
 import boto3
 import redis
+import database
 import joblib
 import base64
 from flask import Flask, request, jsonify, send_file
@@ -15,6 +16,8 @@ from datetime import datetime
 from Endpoint_Object import Endpoint_Object
 from get_data import get_closest_half_hour, get_default_forecast, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
 from database import DynamodbHandler
+from CloudPercentage import Cloud_Percentage
+from keras.models import load_model
 import logging
 import pytz
 from concurrent.futures import ThreadPoolExecutor,as_completed
@@ -39,25 +42,21 @@ with open("config.json","r") as f:
     config['cloud_model'] = joblib.load('production_script/models/clouds.sav')
     config['rain_model'] = joblib.load('production_script/models/rain.sav')
     config['weather_model'] = joblib.load('production_script/models/weath.sav')    
+    # config['cloud_percentage_model'] = load_model('production_script/models/model-28-9-21_v2.h5')
 
     
 
 redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"],port=config["redis_port"],db=0)
 models = dict()
 weather_condition = config["weather_condition"]
-# Machine learning models endpoint object
+database_handler = DynamodbHandler.DynamodbHandler()
 
 # app initialisation
 app = Flask(__name__)
-logging.basicConfig(filename='api_server.log', filemode="w", level=logging.INFO,format=config['log_format'])
+logging.basicConfig(filename='api_server.log', filemode="a", level=logging.INFO,format=config['log_format'])
 app.logger.setLevel(logging.INFO)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
-
-
-
-#connect to h2o server
-
 
 
 
@@ -207,6 +206,12 @@ def gen_report():
 
         merger.write("report_templates/report.pdf")
         merger.close()
+        request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":client_data['lat'],'lng':client_data['lng'],"type":"report_generation"}
+        try:
+            _status = database_handler.insert(request_info,config["request_info_table"])        
+        except Exception as e:            
+            app.logger.error(get_log(logging.INFO,request,f"Unable to generate report,{e},{e.__traceback__.tb_lineno}"))   
+
         return send_file("report_templates/report.pdf", mimetype='application/pdf')
 
 
@@ -223,7 +228,9 @@ def get_prediction():
         request_type = request.args.get('type')
         location = dict()
         client_data['lat'] = float(client_data['lat'])
-        client_data['lng'] = float(client_data['lng'])        
+        client_data['lng'] = float(client_data['lng'])   
+        if 'username' not in client_data.keys():
+            client_data['username'] = "unknown"
         # print(client_data)
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,e.__str__))
@@ -249,35 +256,16 @@ def get_prediction():
 
             
         app.logger.info(get_log(logging.INFO,request,None))
+        request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":f"{client_data['lat']}",'lng':f"{client_data['lng']}","type":"detailed"}
         return jsonify(forecasted_weather)
-
-    # elif request_type == "particular":
-    #     try:
-    #         print("Particular time",datetime.now(tz=pytz.timezone("Asia/Kolkata")))
-    #         forecast = get_default_forecast(datetime.now(tz=pytz.timezone("Asia/Kolkata")),config,client_data)
-    #         app.logger.info(get_log(logging.INFO,request,None))
-    #         return jsonify({"condition":forecast["forecast"],"temperature":forecast["temp"]})
-
-    #     except Exception as e:
-    #         app.logger.error(get_log(logging.ERROR,request,str(e)))
-    #         return jsonify({"Status": "Failed", "Reason": str(e)})
+    
 
 
     elif request_type == "default":
         forecasted_weather = defaultdict()
-        # get the closest node from the user
-        # try:
-        #     closest_node = get_closest_node(location)        
-        #     if closest_node is not None:            
-        #         image = loads(redis_endpoint[closest_node])['picture']
-                
-        # except Exception as e:                
-        #     #return jsonify({"status":"failed","reason":str(e)})
-        #     pass                            
+          
         prediction_times = get_prediction_times(start_day = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata"))),interval=30,days=None,time_zone="Asia/Kolkata")
-        # model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
-        # for time in prediction_times:
-            # forecasted_weather[time.strftime("%Y-%m-%d %H:%M:%S")] = {}
+        
         try:
             with ThreadPoolExecutor(max_workers=2) as e:            
                 futures = {e.submit(get_default_forecast,time,config,client_data):time for time in prediction_times}
@@ -290,11 +278,13 @@ def get_prediction():
             app.logger.error(get_log(logging.ERROR,request,str(e)))
             return jsonify({"Status": "Failed", "Reason": str(e)})
         app.logger.info(get_log(logging.INFO,request,None))
+        request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":f"{client_data['lat']}",'lng':f"{client_data['lng']}","type":"default"}
+        _status = database_handler.insert(request_info,config["request_info_table"])
+        
         return jsonify(forecasted_weather)
 
 
 @app.route("/api/live_prediction",methods=["POST"])
-@cross_origin()
 def live_prediction():
     try:
         client_data = loads(request.data)        
@@ -303,17 +293,52 @@ def live_prediction():
         # print(client_data)
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,e.__str__))
-        return jsonify({"Status": "Failed", "Reason": str(e)})
+        return jsonify({"Status": "Failed", "Reason": str(e),"Line":f"{e.__traceback__.tb_lineno}"})
 
-    try:           
+
+    try:                   
         curr_time = datetime.now(tz=pytz.timezone("Asia/Kolkata"))
-        forecast_today = get_default_forecast(curr_time,config,client_data)
-        app.logger.info(get_log(logging.INFO,request,None))
-        return jsonify({"condition":forecast_today["forecast"],"temperature":forecast_today["temp"]})
+        forecast_today = get_default_forecast(curr_time,config,client_data)       
+    
 
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,str(e)))
-        return jsonify({"Status": "Failed", "Reason": str(e)})
+        return jsonify({"Status": "Failed", "Reason": str(e),"Line":f"{e.__traceback__.tb_lineno}"})
+
+    try:
+        nodes = get_closest_node({"lat":client_data['lat'],"lng":client_data['lng']})        
+        ordered_nodes = sorted(nodes.items(),key=lambda x:float(x[0])) 
+        live_data_node = get_data_from_redis(redis_cluster_endpoint,ordered_nodes[0][1])       
+        request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":client_data['lat'],'lng':client_data['lng'],"type":"live_prediction"}
+        try:
+            _status = database_handler.insert(request_info,config["request_info_table"])        
+        except Exception as e:            
+            app.logger.error(get_log(logging.INFO,request,f"{e},{e.__traceback__.tb_lineno}"))   
+
+        # checking if the closest node is 2km away and the data retrieved is present
+        if int(ordered_nodes[0][0])<2 and "Status" not in live_data_node.keys():
+            app.logger.info(get_log(logging.INFO,request,"Live prediction from node"))
+            if float(live_data_node["Rain"]) in range(0,150):
+                    return jsonify({"condition":forecast_today["forecast"],"temperature":live_data_node["Temperature"]})  
+            
+            elif float(live_data_node["Rain"]) in range(150,600):
+                app.logger.info(get_log(logging.INFO,request,None))
+                return jsonify({"condition":"drizzle","temperature":forecast_today["temp"]})                
+            elif float(live_data_node["Rain"]) in range(600,1025):
+                app.logger.info(get_log(logging.INFO,request,None))
+                return jsonify({"condition":"rain","temperature":forecast_today["temp"]})                
+            else:
+                app.logger.info(get_log(logging.INFO,request,None))
+                return jsonify({"condition":forecast_today["forecast"],"temperature":forecast_today["temp"]})            
+
+        else:            
+            app.logger.info(get_log(logging.INFO,request,"Live prediction from model"))
+            return jsonify({"condition":forecast_today["forecast"],"temperature":forecast_today["temp"]})            
+        
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,f"{e.__str__}, Line no:{e.__traceback__.tb_lineno}"))
+        return jsonify({"Status": "Failed", "Reason": str(e),"Line":f"{e.__traceback__.tb_lineno}"})
+        
 
 
 @app.route("/api/get_live_data",methods=["GET","POST"])
@@ -327,6 +352,13 @@ def get_live_data():
         return {}
     try:
         data = get_data_from_redis(redis_cluster_endpoint,node_id)
+        # model_obj = Cloud_Percentage(config['cloud_percentage_model'],data['picture'])
+        # model_obj.preprocessing()
+        # p = model_obj.cloud_predict()
+        # perc = model_obj.cloud_percentage(p)
+        # data['cloud_percentage'] = str(int(perc))
+
+        
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
         return {}        
