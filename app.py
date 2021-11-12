@@ -16,7 +16,7 @@ from datetime import datetime
 from Endpoint_Object import Endpoint_Object
 from get_data import get_closest_half_hour, get_default_forecast, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
 from database import DynamodbHandler
-from CloudPercentage import Cloud_Percentage
+#from CloudPercentage import Cloud_Percentage
 from keras.models import load_model
 import logging
 import pytz
@@ -257,6 +257,7 @@ def get_prediction():
             
         app.logger.info(get_log(logging.INFO,request,None))
         request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":f"{client_data['lat']}",'lng':f"{client_data['lng']}","type":"detailed"}
+        _status = database_handler.insert(request_info,config["request_info_table"])
         return jsonify(forecasted_weather)
     
 
@@ -289,7 +290,9 @@ def live_prediction():
     try:
         client_data = loads(request.data)        
         client_data['lat'] = float(client_data['lat'])
-        client_data['lng'] = float(client_data['lng'])        
+        client_data['lng'] = float(client_data['lng'])  
+        if 'username' not in client_data.keys():
+        	client_data['username']="unknown"      
         # print(client_data)
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,e.__str__))
@@ -309,7 +312,7 @@ def live_prediction():
         nodes = get_closest_node({"lat":client_data['lat'],"lng":client_data['lng']})        
         ordered_nodes = sorted(nodes.items(),key=lambda x:float(x[0])) 
         live_data_node = get_data_from_redis(redis_cluster_endpoint,ordered_nodes[0][1])       
-        request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":client_data['lat'],'lng':client_data['lng'],"type":"live_prediction"}
+        request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":str(client_data['lat']),'lng':str(client_data['lng']),"type":"live_prediction"}
         try:
             _status = database_handler.insert(request_info,config["request_info_table"])        
         except Exception as e:            
