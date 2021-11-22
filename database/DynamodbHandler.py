@@ -17,6 +17,25 @@ class DynamodbHandler:
             return {"Status":"successful"}
         except Exception as e:
             return {"Status":"failed", "reason":e}
+    
+    def query(self,table_name,partition_key,partition_key_value):
+        try:
+            table = self.db.Table(table_name)
+            response = table.get_item(
+                                    Key={
+                                        partition_key:partition_key_value
+                                    },                            
+                                    ConsistentRead=True,
+                                    )
+
+            if 'Item' not in response.keys():                
+                return {"status":"failed","reason":f"item does not exist in table {table_name}"}
+            return {"status":"success","Response":response["Item"]}
+
+        except Exception as e:
+           return {'status':'failed','reason':str(e)}
+
+
 
     def view_database(self,table):
         try:
