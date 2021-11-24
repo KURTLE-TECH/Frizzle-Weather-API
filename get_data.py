@@ -245,8 +245,11 @@ def get_default_forecast(time,config,client_data):
     
 
 def get_data_from_redis(cluster_end_point,node_id):
-    try:        
-        node_data = loads(cluster_end_point[node_id])
+    try:                
+        
+        response = cluster_end_point.lrange(node_id,0,0)
+        node_data = loads(response[0].decode("utf-8"))                
         return node_data
+        
     except Exception as e:
         return {"Status":"Failed","Reason":f"Unable to get node data {str(e)}"}
