@@ -79,9 +79,18 @@ def gen_report():
         location = dict()
         client_data['lat'] = float(client_data['lat'])
         client_data['lng'] = float(client_data['lng'])
+        if "email" in client_data.keys():
+            try:
+                user_info = database_handler.query(config['user_table'],"email",client_data["email"])        
+                response = database_handler.query("Tiers","tier",user_info["Response"]['tier'])
+                client_data['days'] = int(response['Response']['days'])
+            except Exception:
+                client_data['days']=2
 
+        else:
+            client_data['days']=2
         
-        all_days = get_prediction_times(start_day=datetime.now(), interval=None, days=6, time_zone="Asia/Kolkata")
+        all_days = get_prediction_times(start_day=datetime.now(), interval=None, days=client_data['days'], time_zone="Asia/Kolkata")
         forecasted_weather = dict()
         with ThreadPoolExecutor(max_workers=7) as e:
             futures = {e.submit(get_detailed_forecast, day, config, client_data):day for day in all_days}
