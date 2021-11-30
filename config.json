@@ -22,7 +22,8 @@
         "cloud_model": "cloud-model",
         "rain_model": "rain-model-final",
         "weath_model": "weath-test"
-    }
+    },
+    "user_table":"frizzleusers"
 
 
 }

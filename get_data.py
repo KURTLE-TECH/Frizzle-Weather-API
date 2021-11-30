@@ -173,11 +173,17 @@ def get_detailed_forecast(day,config,client_data):
 
     day_forecast["feels like"] = str(random.randrange(0,50))
     day_forecast["dew_point"] = str(random.randrange(0,50))
-    print(day)
-    sun_data = get_extra_info(client_data['lat'],client_data['lng'],day)
-    day_forecast["Sunrise"] = sun_data["Sunrise"]
-    day_forecast["Sunset"] = sun_data["Sunset"]
-    day_forecast["Daylight"] = sun_data["Daylight"]
+    # print(day)
+    try:
+        sun_data = get_extra_info(client_data['lat'],client_data['lng'],day)
+        day_forecast["Sunrise"] = sun_data["Sunrise"]
+        day_forecast["Sunset"] = sun_data["Sunset"]
+        day_forecast["Daylight"] = sun_data["Daylight"]
+    except Exception:
+        day_forecast["Sunrise"] = "NA"
+        day_forecast["Sunset"] = "NA"
+        day_forecast["Daylight"] = "NA"
+
     # day_forecast["UV Index"] = sun_data["UV Index"]
     # day_forecast["Sunset"] = "6 pm"
     # day_forecast["UV Index"] = "5.5"

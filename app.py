@@ -232,21 +232,32 @@ def get_prediction():
         if 'username' not in client_data.keys():
             client_data['username'] = "unknown"
         # print(client_data)
+         
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,e.__str__))
         return jsonify({"Status": "Failed", "Reason": str(e)})
-    
 
+    if "email" in client_data.keys():
+        try:
+            user_info = database_handler.query(config['user_table'],"email",client_data["email"])        
+            response = database_handler.query("Tiers","tier",user_info["Response"]['tier'])
+            client_data['days'] = int(response['Response']['days'])
+        except Exception:
+            client_data['days']=2
+
+    else:
+        client_data['days']=2
+    
     forecasted_weather = dict()
     if request_type == "detailed":        
                 
-        # get the next 7 days
+        # get the next client_data['days'] days
         # print("Start day calculation",datetime.now())
-        all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=6,time_zone="Asia/Kolkata")
+        all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")
         # print("End day calculation",datetime.now())
         #get the times for each day        
         forecasted_weather = dict()                
-        with ThreadPoolExecutor(max_workers=7) as e:            
+        with ThreadPoolExecutor(max_workers=client_data["days"]) as e:            
             futures = {e.submit(get_detailed_forecast,day,config,client_data):day for day in all_days}
             for future in as_completed(futures):
                 # print("Future value",futures[future])
