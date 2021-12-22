@@ -18,6 +18,7 @@ import joblib
 import copy
 import requests
 from sun_data import get_extra_info
+from timestream import run_query
 
 
 
@@ -259,3 +260,18 @@ def get_data_from_redis(cluster_end_point,node_id):
         
     except Exception as e:
         return {"Status":"Failed","Reason":f"Unable to get node data {str(e)}"}
+
+def get_data_from_timestream(node_id,client):
+    SELECT_ALL = f'SELECT measure_value::varchar FROM "Frizzle_Realtime_Database"."{node_id}" ORDER BY time DESC limit 1'
+    try:    
+        result = run_query(SELECT_ALL,client)
+        # print("*****")
+        # print(type(result[0]))
+        # print(result[0][0].split("="))
+        # print(()
+        logging.info(f"Got data from timestream for node {node_id}")
+        return loads(result[0].split("=")[1][0:-3])
+    except Exception as e:
+        logging.info(f"Could not get data from timestream for node {node_id} due to {str(e)}")
+        return {}
+
