@@ -1,6 +1,7 @@
 from collections import defaultdict
 import random
 import threading
+from typing import MappingView
 import boto3
 import redis
 import database
@@ -11,10 +12,10 @@ from flask_cors import CORS, cross_origin
 import pdfkit
 from PyPDF2 import PdfFileMerger
 from json import loads
-from datetime import datetime
+from datetime import datetime, tzinfo
 #from WeatherModel import api_model_pipeline
 from Endpoint_Object import Endpoint_Object
-from get_data import get_closest_half_hour, get_default_forecast, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
+from get_data import get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
 from keras.models import load_model
@@ -50,7 +51,7 @@ redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"],
 models = dict()
 weather_condition = config["weather_condition"]
 database_handler = DynamodbHandler.DynamodbHandler()
-
+time_stream_client = boto3.client('timestream-query',region_name='us-east-1')
 # app initialisation
 app = Flask(__name__)
 logging.basicConfig(filename='api_server.log', filemode="a", level=logging.INFO,format=config['log_format'])
@@ -313,7 +314,7 @@ def live_prediction():
         client_data['lng'] = float(client_data['lng'])  
         if 'username' not in client_data.keys():
         	client_data['username']="unknown"      
-        # print(client_data)
+    
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,e.__str__))
         return jsonify({"Status": "Failed", "Reason": str(e),"Line":f"{e.__traceback__.tb_lineno}"})
@@ -374,7 +375,8 @@ def get_live_data():
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to load client data"))
         return {}
     try:
-        data = get_data_from_redis(redis_cluster_endpoint,node_id)
+        # data = get_data_from_redis(redis_cluster_endpoint,node_id)
+        data = get_data_from_timestream(node_id,time_stream_client)
         # model_obj = Cloud_Percentage(config['cloud_percentage_model'],data['picture'])
         # model_obj.preprocessing()
         # p = model_obj.cloud_predict()
@@ -386,7 +388,7 @@ def get_live_data():
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
         return {}        
     app.logger.info(get_log(logging.info,request,None))    
-    return data
+    return jsonify(data)
     
 @app.route("/api/closest_node",methods=["GET","POST"])
 @cross_origin()
@@ -406,6 +408,8 @@ def closest_node():
         return {"Status":"failed","reason":str(e)}        
     app.logger.info(get_log(logging.info,request,None))    
     return {"Node ID":data}
+    
+
     
 
 
