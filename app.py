@@ -1,4 +1,5 @@
 from collections import defaultdict
+import json
 import random
 import threading
 from typing import MappingView
@@ -12,13 +13,10 @@ from flask_cors import CORS, cross_origin
 import pdfkit
 from PyPDF2 import PdfFileMerger
 from json import loads
-from datetime import datetime, tzinfo
-#from WeatherModel import api_model_pipeline
-from Endpoint_Object import Endpoint_Object
+from datetime import datetime, time, tzinfo
 from get_data import get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
-from keras.models import load_model
 import logging
 import pytz
 from concurrent.futures import ThreadPoolExecutor,as_completed
@@ -27,14 +25,11 @@ from frizzle_models.humid_script import humid_model
 import h2o
 import os
 from production_script.weather_forecast import Forecast
-from werkzeug.middleware.profiler import ProfilerMiddleware
 
-# external configuration; needs to be loaded from a json file
-# h2o.connect(ip="localhost",port=54321,verbose=False)
 
 with open("config.json","r") as f:
     config = loads(f.read())    
-    # config['frizzle-humidity'] = h2o.load_model(os.getcwd()+"/"+config["models"]["humidity-model-path"])
+    
     config['frizzle-humidity-wrapper'] = humid_model()
     config['temp_model'] = joblib.load('production_script/models/temp.sav')
     config['press_model'] = joblib.load('production_script/models/press.sav')
@@ -42,8 +37,7 @@ with open("config.json","r") as f:
     config['humid_class'] = joblib.load('production_script/models/humidity_15_09_class.sav')
     config['cloud_model'] = joblib.load('production_script/models/clouds.sav')
     config['rain_model'] = joblib.load('production_script/models/rain.sav')
-    config['weather_model'] = joblib.load('production_script/models/weath.sav')    
-    # config['cloud_percentage_model'] = load_model('production_script/models/model-28-9-21_v2.h5')
+    config['weather_model'] = joblib.load('production_script/models/weath.sav')        
 
     
 
@@ -130,7 +124,7 @@ def gen_report():
         stats_template = ""
         forecast_template = ""
         cover_template = ""
-        mid_template = ""
+        # mid_template = ""
         with open("report_templates/stats.html") as stats_html:
             stats_template = stats_html.read()
         
@@ -140,8 +134,8 @@ def gen_report():
         with open("report_templates/cover.html") as cover_html:
             cover_template = cover_html.read()
 
-        with open("report_templates/mid.html") as mid_html:
-            mid_template = mid_html.read()
+        # with open("report_templates/mid.html") as mid_html:
+        #     mid_template = mid_html.read()
 
         options = {
             'page-size': 'Letter',
@@ -164,8 +158,8 @@ def gen_report():
         pdfkit.from_string(current_cover, 'report_templates/cover.pdf', options = options)
         pdfFiles.append('report_templates/cover.pdf')
 
-        pdfkit.from_string(mid_template, 'report_templates/mid.pdf', options = options)
-        pdfFiles.append('report_templates/mid.pdf')
+        # pdfkit.from_string(mid_template, 'report_templates/mid.pdf', options = options)
+        # pdfFiles.append('report_templates/mid.pdf')
 
         page = 0
         for date in dates:
@@ -375,18 +369,11 @@ def get_live_data():
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to load client data"))
         return {}
     try:
-        # data = get_data_from_redis(redis_cluster_endpoint,node_id)
-        data = get_data_from_timestream(node_id,time_stream_client)
-        # model_obj = Cloud_Percentage(config['cloud_percentage_model'],data['picture'])
-        # model_obj.preprocessing()
-        # p = model_obj.cloud_predict()
-        # perc = model_obj.cloud_percentage(p)
-        # data['cloud_percentage'] = str(int(perc))
-
-        
+        data = get_data_from_timestream(node_id,time_stream_client)    
+                
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
-        return {}        
+        return {"Status":"failed","reason":str(e)}             
     app.logger.info(get_log(logging.info,request,None))    
     return jsonify(data)
     
@@ -410,8 +397,48 @@ def closest_node():
     return {"Node ID":data}
     
 
+@app.route("/api/predict",methods=["POST"])
+@cross_origin()
+def predict_forecast():
+    try:
+        client_data = loads(request.data)
+        client_data['year'] = int(client_data['year'])
+        client_data['month'] = int(client_data['month'])
+        client_data['day'] = int(client_data['day'])
+        client_data['hour'] = int(client_data['hour'])
+        client_data['minute'] = int(client_data['minute'])
+        client_data['second'] = int(client_data['second'])  
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])   
+        if 'username' not in client_data.keys():
+            client_data['username'] = "unknown"
+        if 'email' not in client_data.keys():
+            client_data['email'] = "unknown"
+        
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+"Unable to load client data"+str(e.__traceback__.tb_lineno)))
+        return {"Status":"failed","reason":str(e)}      
+        
+    try:
+        
+        time_object = datetime(client_data['year'],client_data['month'],client_data['day'],hour=client_data['hour'],minute=client_data['minute'],second=client_data['second'],tzinfo=pytz.timezone("Asia/Kolkata"))
+        app.logger.info(get_log(logging.INFO,request,time_object.strftime(format="%Y-%m-%d %H:%M:%S")+" Generated time object"))
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+"Client data invalid"))
+        return {"Status":"failed","reason":str(e)}      
     
 
+    try:
+        result = get_default_forecast(time_object,config,client_data)
+    except Exception as e:        
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to get forecast"))
+        return {"Status":"failed","reason":str(e)}   
+
+    request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":f"{client_data['lat']}",'lng':f"{client_data['lng']}","type":"particular time and location"}
+    _status = database_handler.insert(request_info,config["request_info_table"])
+    app.logger.info(get_log(logging.INFO,request,None)+f"Generated particular time forecast for {client_data['lat']}, {client_data['lng']} at {time_object.strftime(format='%Y-%m-%d %H:%M:%S')}")
+    return jsonify(result)
+    
 
 #load_models()
 
