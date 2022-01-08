@@ -9,7 +9,7 @@ from Endpoint_Object import Endpoint_Object
 import redis
 import random
 import numpy as np
-from json import loads
+from json import loads,dumps
 from math import ceil
 import pandas as pd
 import h2o
@@ -183,7 +183,7 @@ def get_detailed_forecast(day,config,client_data):
     except Exception:
         day_forecast["Sunrise"] = "NA"
         day_forecast["Sunset"] = "NA"
-        day_forecast["Daylight"] = "NA"
+        day_forecast["Daylight"] = "NA"        
 
     # day_forecast["UV Index"] = sun_data["UV Index"]
     # day_forecast["Sunset"] = "6 pm"
@@ -272,6 +272,18 @@ def get_data_from_timestream(node_id,client):
         logging.info(f"Got data from timestream for node {node_id}")
         return loads(result[0].split("=")[1][0:-3])
     except Exception as e:
-        logging.info(f"Could not get data from timestream for node {node_id} due to {str(e)}")
+        logging.error(f"Could not get data from timestream for node {node_id} due to {str(e)}")
+        return {}
+
+def get_past_data_from_timestream(node_id,client):
+    SELECT_ALL = f'SELECT measure_value::varchar FROM "Frizzle_Realtime_Database"."{node_id}" ORDER BY time DESC'
+    try:    
+        result = run_query(SELECT_ALL,client)        
+        final_op = [loads(i.split("=")[1][0:-3]) for i in result]        
+        values = {i['time-stamp']:i for i in final_op}
+        logging.info(f"Obtained past data from timestream for node {node_id}")
+        return values
+    except Exception as e:
+        logging.error(f"Could not get past data from timestream for node {node_id} due to {str(e)}")
         return {}
 
