@@ -25,6 +25,8 @@ from frizzle_models.humid_script import humid_model
 import h2o
 import os
 from production_script.weather_forecast import Forecast
+import pandas as pd
+import numpy as np
 
 
 with open("config.json","r") as f:
@@ -383,11 +385,33 @@ def get_past_data():
     try:
         client_data = loads(request.data)
         node_id = client_data["Device ID"]
+        file_type = "json" if "type" not in client_data else client_data["type"]
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to load client data"))
         return {}
     try:
-        data = get_past_data_from_timestream(node_id,time_stream_client)    
+        uid = random.randint(1, 1000)
+        data = get_past_data_from_timestream(node_id,time_stream_client)
+        
+        if file_type == "json":
+            return jsonify(data)
+
+        with open(f"temp_files/test-{uid}.csv", "w") as file:
+            header_row = "Time stamp, Dew Point, Heat Index, Humidity, Light, Pressure, Rain, Temperature\n"
+            file.write(header_row)
+            for date in data:
+                d = data[date]
+                row = f'{date}, {d["Dew Point"]}, {d["Heat Index"]}, {d["Humidity"]}, {d["Light"]}, {d["Pressure"]}, {d["Rain"]}, {d["Temperature"]}\n'
+                file.write(row)
+        if file_type == "csv":
+            return send_file(f"temp_files/test-{uid}.csv", mimetype='text/csv')
+
+        csv_file = pd.read_csv(f"temp_files/test-{uid}.csv")
+        excel_file = pd.ExcelWriter(f"temp_files/test-{uid}.xlsx")
+        csv_file.to_excel(excel_file, index = False)
+        excel_file.save()
+
+        return send_file(f"temp_files/test-{uid}.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
