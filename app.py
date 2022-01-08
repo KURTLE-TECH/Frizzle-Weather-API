@@ -403,6 +403,7 @@ def get_past_data():
                 d = data[date]
                 row = f'{date}, {d["Dew Point"]}, {d["Heat Index"]}, {d["Humidity"]}, {d["Light"]}, {d["Pressure"]}, {d["Rain"]}, {d["Temperature"]}\n'
                 file.write(row)
+
         if file_type == "csv":
             return send_file(f"temp_files/test-{uid}.csv", mimetype='text/csv')
 
@@ -418,6 +419,74 @@ def get_past_data():
         return {"Status":"failed","reason":str(e)}             
     app.logger.info(get_log(logging.info,request,None))    
     return jsonify(data)
+
+@app.route("/api/get_future_data", methods = ["GET", "POST"])
+@cross_origin()
+def get_future_data():
+    try:
+        client_data = loads(request.data)
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])
+        node_id = client_data["Device ID"]
+        file_type = "json" if "type" not in client_data else client_data["type"]
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e) + " Unable to load client data"))
+        return {}
+
+    if "email" in client_data.keys():
+        try:
+            user_info = database_handler.query(config['user_table'], "email", client_data["email"])        
+            response = database_handler.query("Tiers","tier", user_info["Response"]['tier'])
+            client_data['days'] = int(response['Response']['days'])
+        except Exception:
+            client_data['days']=2
+
+    else:
+        client_data['days']=2
+    
+    try:
+
+        all_days = get_prediction_times(start_day = datetime.now(), interval=None,days=client_data["days"], time_zone="Asia/Kolkata")   
+        forecasted_weather = dict()                
+        with ThreadPoolExecutor(max_workers = client_data["days"]) as e:
+            futures = {e.submit(get_detailed_forecast, day, config, client_data):day for day in all_days}
+            for future in as_completed(futures):
+                forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()
+
+        if file_type == "json":
+            return jsonify(forecasted_weather)
+
+        uid = random.randint(1, 1000)
+        dates = list(forecasted_weather.keys())
+        dates.sort()
+
+        with open(f"temp_files/future-forecast-{uid}.csv", "w") as file:
+            header_row = "Time Stamp, Condition, Humidity, Pressure, Rain Class, Rain Probability, Temperature\n"
+            file.write(header_row)
+            for date in dates:
+                for timestamp in forecasted_weather["forecast"]:
+                    line = f"{timestamp}, {forecasted_weather["condition"][timestamp]}, {forecasted_weather["humidity"][timestamp]}, {forecasted_weather["pressure"][timestamp]}, {forecasted_weather["rain_class"][timestamp]}, {forecasted_weather["rain_probability"][timestamp]}, {forecasted_weather["temperature"][timestamp]}\n"
+                    file.write(line)
+
+        if file_type == "csv":
+            return send_file(f"temp_files/future-forecast-{uid}.csv", mimetype='text/csv')
+
+        csv_file = pd.read_csv(f"temp_files/future-forecast-{uid}.csv")
+        excel_file = pd.ExcelWriter(f"temp_files/future-forecast-{uid}.xlsx")
+        csv_file.to_excel(excel_file, index = False)
+        excel_file.save()
+
+        return send_file(f"temp_files/future-forecast-{uid}.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    
+
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
+        return {"Status":"failed","reason":str(e)}
+                 
+    app.logger.info(get_log(logging.info,request,None))    
+    return jsonify(forecasted_weather)
+        
+
     
 @app.route("/api/closest_node",methods=["GET","POST"])
 @cross_origin()
