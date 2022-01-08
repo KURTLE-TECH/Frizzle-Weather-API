@@ -14,7 +14,7 @@ import pdfkit
 from PyPDF2 import PdfFileMerger
 from json import loads
 from datetime import datetime, time, tzinfo
-from get_data import get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
+from get_data import get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
 import logging
@@ -370,6 +370,24 @@ def get_live_data():
         return {}
     try:
         data = get_data_from_timestream(node_id,time_stream_client)    
+                
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
+        return {"Status":"failed","reason":str(e)}             
+    app.logger.info(get_log(logging.info,request,None))    
+    return jsonify(data)
+
+@app.route("/api/get_past_data",methods=["GET","POST"])
+@cross_origin()
+def get_past_data():
+    try:
+        client_data = loads(request.data)
+        node_id = client_data["Device ID"]
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to load client data"))
+        return {}
+    try:
+        data = get_past_data_from_timestream(node_id,time_stream_client)    
                 
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
