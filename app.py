@@ -464,8 +464,8 @@ def get_future_data():
             header_row = "Time Stamp, Condition, Humidity, Pressure, Rain Class, Rain Probability, Temperature\n"
             file.write(header_row)
             for date in dates:
-                for timestamp in forecasted_weather["forecast"]:
-                    line = f'{timestamp}, {forecasted_weather["condition"][timestamp]}, {forecasted_weather["humidity"][timestamp]}, {forecasted_weather["pressure"][timestamp]}, {forecasted_weather["rain_class"][timestamp]}, {forecasted_weather["rain_probability"][timestamp]}, {forecasted_weather["temperature"][timestamp]}\n'
+                for timestamp in forecasted_weather[date]["forecast"]:
+                    line = f'{timestamp}, {forecasted_weather[date]["condition"][timestamp]}, {forecasted_weather[date]["humidity"][timestamp]}, {forecasted_weather[date]["pressure"][timestamp]}, {forecasted_weather[date]["rain_class"][timestamp]}, {forecasted_weather[date]["rain_probability"][timestamp]}, {forecasted_weather[date]["temperature"][timestamp]}\n'
                     file.write(line)
 
         if file_type == "csv":
