@@ -456,6 +456,14 @@ def get_future_data():
         if file_type == "json":
             return jsonify(forecasted_weather)
 
+        rain_class_mapping = {
+            "0": "0mm",
+            "1": "0 - 0.5mm",
+            "2": "0.5 - 1mm",
+            "3": "1 - 5mm",
+            "4": "5 - 10mm"
+        }
+
         uid = random.randint(1, 1000)
         dates = list(forecasted_weather.keys())
         dates.sort()
@@ -465,7 +473,9 @@ def get_future_data():
             file.write(header_row)
             for date in dates:
                 for timestamp in forecasted_weather[date]["forecast"]:
-                    line = f'{timestamp}, {forecasted_weather[date]["condition"][timestamp]}, {forecasted_weather[date]["humidity"][timestamp]}, {forecasted_weather[date]["pressure"][timestamp]}, {forecasted_weather[date]["rain_class"][timestamp]}, {forecasted_weather[date]["rain_probability"][timestamp]}, {forecasted_weather[date]["temperature"][timestamp]}\n'
+                    rain_class = rain_class_mapping[forecasted_weather[date]["rain_class"][timestamp]]
+                    rain_probability = 0 if rain_class == "0" else forecasted_weather[date]["rain_probability"][timestamp]
+                    line = f'{timestamp}, {forecasted_weather[date]["condition"][timestamp]}, {forecasted_weather[date]["humidity"][timestamp]}, {forecasted_weather[date]["pressure"][timestamp]}, {rain_class}, {rain_probability}, {forecasted_weather[date]["temperature"][timestamp]}\n'
                     file.write(line)
 
         if file_type == "csv":
