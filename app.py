@@ -393,7 +393,7 @@ def get_past_data():
         uid = random.randint(1, 1000)
         data = get_past_data_from_timestream(node_id,time_stream_client)
 
-        if len(data.keys) == 0:
+        if len(data.keys()) == 0:
             return "Node not available", 400
             
         if file_type == "json":
