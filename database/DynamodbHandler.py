@@ -1,9 +1,9 @@
 import boto3
 
 class DynamodbHandler:
-    def __init__(self):
-        self.db = boto3.resource('dynamodb')
-        self.client = boto3.client('dynamodb')
+    def __init__(self,region):
+        self.db = boto3.resource('dynamodb',region_name=region)
+        self.client = boto3.client('dynamodb',region_name=region)
     
     def test(self):
         return "Yes its working"

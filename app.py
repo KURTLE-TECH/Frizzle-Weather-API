@@ -25,8 +25,12 @@ from frizzle_models.humid_script import humid_model
 import h2o
 import os
 from production_script.weather_forecast import Forecast
+<<<<<<< HEAD
 import pandas as pd
 import numpy as np
+=======
+from api_authenticator import ApiAuthenticator
+>>>>>>> Added api authentication
 
 
 with open("config.json","r") as f:
@@ -46,7 +50,8 @@ with open("config.json","r") as f:
 redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"],port=config["redis_port"],db=0)
 models = dict()
 weather_condition = config["weather_condition"]
-database_handler = DynamodbHandler.DynamodbHandler()
+database_handler = DynamodbHandler.DynamodbHandler(region="ap-south-1")
+auth_object = ApiAuthenticator(config)
 time_stream_client = boto3.client('timestream-query',region_name='us-east-1')
 # app initialisation
 app = Flask(__name__)
@@ -542,7 +547,18 @@ def predict_forecast():
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,str(e)+"Unable to load client data"+str(e.__traceback__.tb_lineno)))
         return {"Status":"failed","reason":str(e)}      
-        
+
+    
+    try:
+        key = request.args.get('key')
+    except Exception as e:
+        return "API Key missing",401
+    
+    #authenticate key
+    validation = auth_object.validate_key(key)
+    if validation==False:
+        return "No permission for key", 403    
+
     try:
         
         time_object = datetime(client_data['year'],client_data['month'],client_data['day'],hour=client_data['hour'],minute=client_data['minute'],second=client_data['second'],tzinfo=pytz.timezone("Asia/Kolkata"))
@@ -567,4 +583,4 @@ def predict_forecast():
 #load_models()
 
 if __name__ == "__main__":
-    app.run(debug=True,port=5000)
+    app.run(host="0.0.0.0",debug=True,port=5000)
