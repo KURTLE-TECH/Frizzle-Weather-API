@@ -23,7 +23,8 @@
         "rain_model": "rain-model-final",
         "weath_model": "weath-test"
     },
-    "user_table":"frizzleusers"
+    "user_table":"frizzleusers",
+    "api_table":"API-Keys"
 
 
 }
