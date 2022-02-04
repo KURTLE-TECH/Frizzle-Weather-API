@@ -25,17 +25,24 @@ class ApiAuthenticator:
             return {"status":"failed","reason":e.__str__}
 
         try:
-            time_stamp = datetime.now().strftime("%Y-%M-%D_%H:%M:%S")            
+            self.handler.create_table_in_database(hashed_key.hexdigest())
+        except Exception as e:
+            logging.error(e.__str__,e.__traceback__.tb_lineno)
+            return {"status":"failed","reason":e.__str__}
+        
+        try:
+            time_stamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")            
             table_values = {"key":hashed_key.hexdigest(),"generated_time":time_stamp,"is_active":"true"}
-            result = self.handler.insert(table_values,self.table)                                    
+            result = self.handler.insert(table_values,self.table)              
         except Exception as e:
             logging.error(e.__str__)
             return {"status":"failed","reason":e.__str__}
+                    
         return key
         
 
 
-    def validate_key(self,key):  
+    def validate_key(self,key,type):  
         try:
             encrypted_key_string = hashlib.md5(key.encode('utf-8'))        
         except Exception as e:
@@ -43,6 +50,10 @@ class ApiAuthenticator:
         result = self.handler.query(self.table,"key",encrypted_key_string.hexdigest())        
         if result['status']=="success":            
             if result['Response']['is_active'] =='false':
+                return False
+            table_values = {"time-stamp":datetime.now().strftime("%Y-%m-%d_%H:%M:%S"),"type":type}
+            result = self.handler.insert(table_values,encrypted_key_string.hexdigest())
+            if result['Status']=="failed":
                 return False
             return True
         return False    
@@ -64,9 +75,9 @@ class ApiAuthenticator:
             return {"status":"success"}
         return {"status":"failed","reason":"key does not exist in database"}
 
-
+# auth_object = ApiAuthenticator()
 # key = auth_object.generate_key()
 # print("This is key",key)
-# key = auth_object.validate_key("e2oxq0jv4uel7k2pxgfv")
-# key = auth_object.update_key("e2oxq0jv4uel7k2pxgfv",'false')
+# key = auth_object.validate_key("","")
+# key = auth_object.update_key("",'')
 # print(key)

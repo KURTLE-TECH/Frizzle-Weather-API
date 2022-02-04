@@ -25,12 +25,9 @@ from frizzle_models.humid_script import humid_model
 import h2o
 import os
 from production_script.weather_forecast import Forecast
-<<<<<<< HEAD
 import pandas as pd
 import numpy as np
-=======
 from api_authenticator import ApiAuthenticator
->>>>>>> Added api authentication
 
 
 with open("config.json","r") as f:
@@ -156,10 +153,10 @@ def gen_report():
         dates = list(forecasted_weather.keys())
         dates.sort()
 
-        if client_data["address"]:
-            current_cover = cover_template.replace("{{location}}", client_data["address"])
-        else:
-            current_cover = cover_template.replace("{{location}}", f"({client_data['lat']}, {client_data['lng']})")
+        # if client_data["address"]:
+        #     current_cover = cover_template.replace("{{location}}", client_data["address"])
+        # else:
+        current_cover = cover_template.replace("{{location}}", f"({client_data['lat']}, {client_data['lng']})")
 
         current_cover = current_cover.replace("{{period}}", f"{dates[0]} - {dates[-1]}")
         pdfkit.from_string(current_cover, 'report_templates/cover.pdf', options = options)
@@ -555,7 +552,7 @@ def predict_forecast():
         return "API Key missing",401
     
     #authenticate key
-    validation = auth_object.validate_key(key)
+    validation = auth_object.validate_key(key,'particular time')
     if validation==False:
         return "No permission for key", 403    
 
