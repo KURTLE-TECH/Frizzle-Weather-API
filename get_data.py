@@ -69,7 +69,7 @@ def get_distance(node_location,location):
     #return ((location['lat']-node_location['lat'])**2+(location['lng']-node_location['lng'])**2)**0.5 
     
 def get_closest_node(location):
-    db_handler = db.DynamodbHandler()
+    db_handler = db.DynamodbHandler(region='ap-south-1')
     response = db_handler.view_database('Nodes_Available')
     if 'Items' in response.keys():
     #model is default model        
