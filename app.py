@@ -8,10 +8,10 @@ import redis
 import database
 import joblib
 import base64
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file,send_from_directory,make_response
 from flask_cors import CORS, cross_origin
 import pdfkit
-from PyPDF2 import PdfFileMerger
+from PyPDF2 import PdfFileMerger,PdfFileReader
 from json import loads
 from datetime import datetime, time, tzinfo
 from get_data import get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
@@ -153,10 +153,10 @@ def gen_report():
         dates = list(forecasted_weather.keys())
         dates.sort()
 
-        # if client_data["address"]:
-        #     current_cover = cover_template.replace("{{location}}", client_data["address"])
-        # else:
-        current_cover = cover_template.replace("{{location}}", f"({client_data['lat']}, {client_data['lng']})")
+        if "address" in client_data.keys():
+            current_cover = cover_template.replace("{{location}}", client_data["address"])
+        else:
+            current_cover = cover_template.replace("{{location}}", f"({client_data['lat']}, {client_data['lng']})")
 
         current_cover = current_cover.replace("{{period}}", f"{dates[0]} - {dates[-1]}")
         pdfkit.from_string(current_cover, 'report_templates/cover.pdf', options = options)
@@ -219,9 +219,12 @@ def gen_report():
             _status = database_handler.insert(request_info,config["request_info_table"])        
         except Exception as e:            
             app.logger.error(get_log(logging.INFO,request,f"Unable to generate report,{e},{e.__traceback__.tb_lineno}"))   
-
-        return send_file("report_templates/report.pdf", mimetype='application/pdf')
-
+        
+    
+        response_file = make_response(send_file("report_templates/report.pdf",as_attachment=True))
+        response_file.headers['Content-Type'] = 'application/pdf'
+        response_file.headers['Content-Disposition'] = 'attachment'
+        return response_file
 
     except Exception as e:
         app.logger.error(get_log(logging.ERROR, request, e))
