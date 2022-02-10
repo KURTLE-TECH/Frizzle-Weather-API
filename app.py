@@ -14,7 +14,7 @@ import pdfkit
 from PyPDF2 import PdfFileMerger,PdfFileReader
 from json import loads
 from datetime import datetime, time, tzinfo
-from get_data import get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
+from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
 import logging
@@ -28,7 +28,7 @@ from production_script.weather_forecast import Forecast
 import pandas as pd
 import numpy as np
 from api_authenticator import ApiAuthenticator
-
+import hashlib
 
 with open("config.json","r") as f:
     config = loads(f.read())    
@@ -528,17 +528,10 @@ def closest_node():
 
 @app.route("/api/predict",methods=["POST"])
 @cross_origin()
-def predict_forecast():
+def predict_forecast():    
     try:
         client_data = loads(request.data)
-        client_data['year'] = int(client_data['year'])
-        client_data['month'] = int(client_data['month'])
-        client_data['day'] = int(client_data['day'])
-        client_data['hour'] = int(client_data['hour'])
-        client_data['minute'] = int(client_data['minute'])
-        client_data['second'] = int(client_data['second'])  
-        client_data['lat'] = float(client_data['lat'])
-        client_data['lng'] = float(client_data['lng'])   
+        
         if 'username' not in client_data.keys():
             client_data['username'] = "unknown"
         if 'email' not in client_data.keys():
@@ -546,38 +539,41 @@ def predict_forecast():
         
     except Exception as e:
         app.logger.error(get_log(logging.ERROR,request,str(e)+"Unable to load client data"+str(e.__traceback__.tb_lineno)))
-        return {"Status":"failed","reason":str(e)}      
-
+        return {"Status":"failed","reason":str(e)}, 400      
     
     try:
         key = request.args.get('key')
+        request_type = request.args.get('type')
+
     except Exception as e:
-        return "API Key missing",401
+        app.logger.error(get_log(logging.ERROR,request,str(e)+"Parameters missing"+str(e.__traceback__.tb_lineno)))
+        return "Parameters missing",401
     
     #authenticate key
-    validation = auth_object.validate_key(key,'particular time')
+    validation = auth_object.validate_key(key,request_type)
     if validation==False:
+        app.logger.error(f"No permission for {key}")
         return "No permission for key", 403    
 
-    try:
-        
-        time_object = datetime(client_data['year'],client_data['month'],client_data['day'],hour=client_data['hour'],minute=client_data['minute'],second=client_data['second'],tzinfo=pytz.timezone("Asia/Kolkata"))
-        app.logger.info(get_log(logging.INFO,request,time_object.strftime(format="%Y-%m-%d %H:%M:%S")+" Generated time object"))
-    except Exception as e:
-        app.logger.error(get_log(logging.ERROR,request,str(e)+"Client data invalid"))
-        return {"Status":"failed","reason":str(e)}      
+    data = database_handler.query(config['api_table'],"key",hashlib.md5(key.encode('utf-8')).hexdigest())    
+    if data['status'] == 'success':
+        client_data['days'] = int(data['Response']['Days'])
+    else:
+        client_data['days'] = 2
+    
+    data = forecast(request_type,client_data,config)
+
+    if data['status'] == 'fail':
+        app.logger.error(f"Unable to forecast. Reason {data['reason']}")
+        return data, 500
+
+    request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":key,"lat":f"{client_data['lat']}",'lng':f"{client_data['lng']}","type":type}
+    _status = database_handler.insert(request_info,config["request_info_table"])
+    app.logger.info(get_log(logging.INFO,request,None)+f"Generated {key} forecast for {key} at {datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')}")
+    return jsonify(data['data'])
     
 
-    try:
-        result = get_default_forecast(time_object,config,client_data)
-    except Exception as e:        
-        app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to get forecast"))
-        return {"Status":"failed","reason":str(e)}   
-
-    request_info = {"time-stamp":datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),"username":client_data['username'],"lat":f"{client_data['lat']}",'lng':f"{client_data['lng']}","type":"particular time and location"}
-    _status = database_handler.insert(request_info,config["request_info_table"])
-    app.logger.info(get_log(logging.INFO,request,None)+f"Generated particular time forecast for {client_data['lat']}, {client_data['lng']} at {time_object.strftime(format='%Y-%m-%d %H:%M:%S')}")
-    return jsonify(result)
+    
     
 
 #load_models()

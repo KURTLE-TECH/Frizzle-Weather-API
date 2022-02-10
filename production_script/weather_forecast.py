@@ -8,8 +8,8 @@ class Forecast(object):
         return None        
         
     def transform_data(self,lat,lng,date_obj):
-        date = pd.to_datetime(date_obj)
-        body = np.array([lat, lng, date.dayofweek , date.quarter, date.month, date.dayofyear, date.day, date.weekofyear, date.year, date.hour*60 + date.minute]).reshape(1,-1)
+        date = pd.to_datetime(date_obj)              
+        body = np.array([float(lat), float(lng), int(date.dayofweek) , int(date.quarter), int(date.month), int(date.dayofyear), int(date.day), int(date.weekofyear), int(date.year), int(date.hour*60 + date.minute)]).reshape(1,-1)
         return body
 
     def temp_forecast(self,body,config):
