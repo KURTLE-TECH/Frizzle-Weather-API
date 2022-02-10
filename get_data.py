@@ -19,6 +19,7 @@ import copy
 import requests
 from sun_data import get_extra_info
 from timestream import run_query
+from concurrent.futures import ThreadPoolExecutor,as_completed
 
 
 
@@ -192,7 +193,7 @@ def get_detailed_forecast(day,config,client_data):
     # day_forecast["wind_speed"] = "125"            
     return day_forecast
 
-def get_default_forecast(time,config,client_data):
+def  get_default_forecast(time,config,client_data):
     try:
         time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
         # model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
@@ -264,11 +265,7 @@ def get_data_from_redis(cluster_end_point,node_id):
 def get_data_from_timestream(node_id,client):
     SELECT_ALL = f'SELECT measure_value::varchar FROM "Frizzle_Realtime_Database"."{node_id}" ORDER BY time DESC limit 1'
     try:    
-        result = run_query(SELECT_ALL,client)
-        # print("*****")
-        # print(type(result[0]))
-        # print(result[0][0].split("="))
-        # print(()
+        result = run_query(SELECT_ALL,client)        
         logging.info(f"Got data from timestream for node {node_id}")
         return loads(result[0].split("=")[1][0:-3])
     except Exception as e:
@@ -286,4 +283,51 @@ def get_past_data_from_timestream(node_id,client):
     except Exception as e:
         logging.error(f"Could not get past data from timestream for node {node_id} due to {str(e)}")
         return {}
+
+def forecast(type,client_data,config):
+    if type == "current":
+        try:
+            curr_time = datetime.now()            
+            forecast_today = get_default_forecast(curr_time,config,client_data)       
+            return {"status":"success","data":forecast_today}
+        except Exception as e:
+            return {"status":"fail","reason":str(e)}
+
+    elif type == "detailed":
+        all_days = get_prediction_times(start_day = datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")                
+        forecasted_weather = dict()                
+        try:
+            all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")             
+            forecasted_weather = dict()                
+            with ThreadPoolExecutor(max_workers=client_data["days"]) as e:            
+                futures = {e.submit(get_detailed_forecast,day,config,client_data):day for day in all_days}
+                for future in as_completed(futures):                    
+                    forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()            
+            return {"status":"success","data":forecasted_weather}
+        except Exception as e:
+            {"status":"fail","reason":str(e)}
+
+    elif type == "particular":
+        client_data['year'] = int(client_data['year'])
+        client_data['month'] = int(client_data['month'])
+        client_data['day'] = int(client_data['day'])
+        client_data['hour'] = int(client_data['hour'])
+        client_data['minute'] = int(client_data['minute'])
+        client_data['second'] = int(client_data['second'])  
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])
+        try:
+        
+            time_object = datetime(client_data['year'],client_data['month'],client_data['day'],hour=client_data['hour'],minute=client_data['minute'],second=client_data['second'],tzinfo=pytz.timezone("Asia/Kolkata"))   
+        except Exception as e:            
+            return {"status":"fail","reason":str(e)}      
+            
+        try:
+            result = get_default_forecast(time_object,config,client_data)
+            return {"status":"pass","data":result}
+        except Exception as e:                    
+            return {"status":"fail","reason":str(e)}   
+
+    
+
 

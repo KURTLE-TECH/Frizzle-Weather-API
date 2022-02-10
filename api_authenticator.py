@@ -48,11 +48,13 @@ class ApiAuthenticator:
         except Exception as e:
             return False
         result = self.handler.query(self.table,"key",encrypted_key_string.hexdigest())        
+        print(result)
         if result['status']=="success":            
             if result['Response']['is_active'] =='false':
                 return False
             table_values = {"time-stamp":datetime.now().strftime("%Y-%m-%d_%H:%M:%S"),"type":type}
             result = self.handler.insert(table_values,encrypted_key_string.hexdigest())
+            print(result)
             if result['Status']=="failed":
                 return False
             return True
@@ -75,7 +77,7 @@ class ApiAuthenticator:
             return {"status":"success"}
         return {"status":"failed","reason":"key does not exist in database"}
 
-# auth_object = ApiAuthenticator()
+# auth_object = ApiAuthenticator(config={"api_table":"API-Keys"})
 # key = auth_object.generate_key()
 # print("This is key",key)
 # key = auth_object.validate_key("","")
