@@ -162,7 +162,7 @@ def get_detailed_forecast(day,config,client_data):
 
         weather_forecast = predict_weather(time,config,client_data)        
         day_forecast["condition"][time_string] = config["weather_condition"][str(weather_forecast['weather'][0])]                
-        day_forecast['forecast'][time_string] = {config['weather_condition'][str(i)]:f"{weather_forecast['weather'][1][i]:.4f}" for i in range(5)}
+        day_forecast['forecast'][time_string] = {config['weather_condition'][str(i)]:f"{weather_forecast['weather'][1][i]:.4f}" for i in range(6)}
 
         day_forecast['temperature'][time_string] = str(weather_forecast['temp'])
         day_forecast['pressure'][time_string] = str(weather_forecast['pressure'])

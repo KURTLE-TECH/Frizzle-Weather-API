@@ -553,6 +553,8 @@ def predict_forecast():
         app.logger.error(get_log(logging.ERROR,request,str(e)+"Parameters missing"+str(e.__traceback__.tb_lineno)))
         return "Parameters missing",401
     
+    client_data['elevation'] = get_elevation(client_data)
+    
     #authenticate key
     validation = auth_object.validate_key(key,request_type)
     if validation==False:
