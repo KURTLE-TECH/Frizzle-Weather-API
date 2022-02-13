@@ -1,3 +1,4 @@
+import logging
 import joblib
 import pandas as pd
 import numpy as np
@@ -7,10 +8,15 @@ class Forecast(object):
     def __init__(self):
         return None        
         
-    def transform_data(self,lat,lng,date_obj):
-        date = pd.to_datetime(date_obj)              
-        body = np.array([float(lat), float(lng), int(date.dayofweek) , int(date.quarter), int(date.month), int(date.dayofyear), int(date.day), int(date.weekofyear), int(date.year), int(date.hour*60 + date.minute)]).reshape(1,-1)
-        return body
+    def transform_data(self,lat,lng,alt,date_obj):
+        try:
+            date = pd.to_datetime(date_obj)              
+            # body = np.array([float(lat), float(lng), int(date.dayofweek) , int(date.quarter), int(date.month), int(date.dayofyear), int(date.day), int(date.weekofyear), int(date.year), int(date.hour*60 + date.minute)]).reshape(1,-1)
+            body = [float(lat), float(lng)]
+            body.extend([int(date.dayofweek) , int(date.quarter), int(date.month), int(date.dayofyear), int(date.day), int(date.weekofyear), int(date.hour*60 + date.minute), int(date.year),float(alt)])
+            return np.array([body])
+        except Exception as e:
+            logging.error(e,e.__traceback__.tb_lineno)
 
     def temp_forecast(self,body,config):
         temp_pred = config['temp_model'].predict(body)
@@ -20,13 +26,14 @@ class Forecast(object):
         press_pred = config['press_model'].predict(body)
         return press_pred
 
-    def humid_forecast(self,body,config):
-        humid_pred = inv_boxcox(config['humid_model'].predict(body), 2.5)
-        return humid_pred
+    # def humid_forecast(self,body,config):
+    #     humid_pred = inv_boxcox(config['humid_model'].predict(body), 2.5)
+    #     return humid_pred
 
     def humid_class(self,body,config):
         humid_pred = config['humid_class'].predict(body)
         return humid_pred
+        
     def cloud_forecast(self,body,config):
         cloud_pred = config['cloud_model'].predict(body)
         return cloud_pred

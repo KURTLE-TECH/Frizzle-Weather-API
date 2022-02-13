@@ -8,10 +8,10 @@ import redis
 import database
 import joblib
 import base64
-from flask import Flask, request, jsonify, send_file,send_from_directory,make_response
+from flask import Flask, request, jsonify, send_file,make_response
 from flask_cors import CORS, cross_origin
 import pdfkit
-from PyPDF2 import PdfFileMerger,PdfFileReader
+from PyPDF2 import PdfFileMerger
 from json import loads
 from datetime import datetime, time, tzinfo
 from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
@@ -22,7 +22,6 @@ import pytz
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from math import ceil
 from frizzle_models.humid_script import humid_model
-import h2o
 import os
 from production_script.weather_forecast import Forecast
 import pandas as pd
@@ -34,13 +33,13 @@ with open("config.json","r") as f:
     config = loads(f.read())    
     
     config['frizzle-humidity-wrapper'] = humid_model()
-    config['temp_model'] = joblib.load('production_script/models/temp.sav')
-    config['press_model'] = joblib.load('production_script/models/press.sav')
-    config['humid_model'] = joblib.load('production_script/models/humid.sav')
-    config['humid_class'] = joblib.load('production_script/models/humidity_15_09_class.sav')
-    config['cloud_model'] = joblib.load('production_script/models/clouds.sav')
-    config['rain_model'] = joblib.load('production_script/models/rain.sav')
-    config['weather_model'] = joblib.load('production_script/models/weath.sav')        
+    config['temp_model'] = joblib.load('production_script/models/temp_20_12_NR_model.sav')
+    config['press_model'] = joblib.load('production_script/models/press_06_01_22_nonreal_time_model.sav')
+    # config['humid_model'] = joblib.load('production_script/models/humid.sav')
+    config['humid_class'] = joblib.load('production_script/models/hum_8_class_07_01_NR_model.sav')
+    config['cloud_model'] = joblib.load('production_script/models/clouds_class_7_1_NR_model_v3.sav')
+    config['rain_model'] = joblib.load('production_script/models/rain_class_7_1_NR_model_Coimb_v2.sav')
+    config['weather_model'] = joblib.load('production_script/models/weath_class_7_1_NR_model_Coimb_v2.sav')
 
     
 
