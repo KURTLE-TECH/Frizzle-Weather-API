@@ -5,10 +5,21 @@
     "region": "ap-south-1",
     "weather_condition": {
         "0": "cloudy",
-        "1": "sunny",
+        "1": "clear",
         "2": "drizzle",
         "3": "rainy",
-        "4": "overcast"
+        "4": "thunderstorm",
+        "5": "haze"
+    },
+    "humidity_class":{
+        "0":"8",
+        "1":"23",
+        "2":"35",
+        "3":"45",
+        "4":"55",
+        "5":"65",
+        "6":"75",
+        "7":"90"
     },
     "request_info_table":"Request-Info",
     "access_key": "AKIAWY4ZKYYE5BL5SUUZ",
