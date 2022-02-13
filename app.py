@@ -77,7 +77,7 @@ def gen_report():
         location = dict()
         client_data['lat'] = float(client_data['lat'])
         client_data['lng'] = float(client_data['lng'])
-        client_data['alt'] = float(client_data['elevation'])  
+        client_data['alt'] = get_elevation(client_data)
         if "email" in client_data.keys():
             try:
                 user_info = database_handler.query(config['user_table'],"email",client_data["email"])        
@@ -553,7 +553,7 @@ def predict_forecast():
         app.logger.error(get_log(logging.ERROR,request,str(e)+"Parameters missing"+str(e.__traceback__.tb_lineno)))
         return "Parameters missing",401
     
-    client_data['elevation'] = get_elevation(client_data)
+    client_data['alt'] = get_elevation(client_data)
     
     #authenticate key
     validation = auth_object.validate_key(key,request_type)
