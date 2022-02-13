@@ -14,7 +14,7 @@ import pdfkit
 from PyPDF2 import PdfFileMerger
 from json import loads
 from datetime import datetime, time, tzinfo
-from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis
+from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis,get_elevation
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
 import logging
@@ -77,6 +77,7 @@ def gen_report():
         location = dict()
         client_data['lat'] = float(client_data['lat'])
         client_data['lng'] = float(client_data['lng'])
+        client_data['alt'] = float(client_data['elevation'])  
         if "email" in client_data.keys():
             try:
                 user_info = database_handler.query(config['user_table'],"email",client_data["email"])        
@@ -238,7 +239,8 @@ def get_prediction():
         request_type = request.args.get('type')
         location = dict()
         client_data['lat'] = float(client_data['lat'])
-        client_data['lng'] = float(client_data['lng'])   
+        client_data['lng'] = float(client_data['lng']) 
+        client_data['alt'] = float(client_data['elevation'])  
         if 'username' not in client_data.keys():
             client_data['username'] = "unknown"
         # print(client_data)
@@ -311,7 +313,8 @@ def live_prediction():
     try:
         client_data = loads(request.data)        
         client_data['lat'] = float(client_data['lat'])
-        client_data['lng'] = float(client_data['lng'])  
+        client_data['lng'] = float(client_data['lng']) 
+        # client_data['alt'] = float(client_data['elevation'])
         if 'username' not in client_data.keys():
         	client_data['username']="unknown"      
     
@@ -319,6 +322,7 @@ def live_prediction():
         app.logger.error(get_log(logging.ERROR,request,e.__str__))
         return jsonify({"Status": "Failed", "Reason": str(e),"Line":f"{e.__traceback__.tb_lineno}"})
 
+    client_data['alt'] = get_elevation(client_data)
 
     try:                   
         curr_time = datetime.now(tz=pytz.timezone("Asia/Kolkata"))
@@ -434,6 +438,7 @@ def get_future_data():
         client_data = loads(request.data)
         client_data['lat'] = float(client_data['lat'])
         client_data['lng'] = float(client_data['lng'])
+        client_data['alt'] = float(client_data['alt'])  
         node_id = client_data["Device ID"]
         file_type = "json" if "type" not in client_data else client_data["type"]
     except Exception as e:

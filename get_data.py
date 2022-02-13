@@ -284,3 +284,12 @@ def forecast(type,client_data,config):
             return {"status":"pass","data":result}
         except Exception as e:                    
             return {"status":"fail","reason":str(e)}   
+
+def get_elevation(client_data):
+    url = f"https://maps.googleapis.com/maps/api/elevation/json?locations={client_data['lat']}%2C{client_data['lng']}&key=AIzaSyBpe-HV4Z7gJjexZAs_bmwJvf6qyWu1Lz8"
+    try:
+        response = requests.post(url)
+        return float(response.json()['results'][0]['elevation'])
+    except Exception as e:
+        logging.error(str(e)+" Unable to fetch altitude")
+        return 0
