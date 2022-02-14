@@ -262,7 +262,7 @@ def forecast(type,client_data,config):
                     forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()            
             return {"status":"success","data":forecasted_weather}
         except Exception as e:
-            {"status":"fail","reason":str(e)}
+            return {"status":"fail","reason":str(e)}
 
     elif type == "particular":
         client_data['year'] = int(client_data['year'])
