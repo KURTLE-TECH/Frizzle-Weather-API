@@ -438,7 +438,7 @@ def get_future_data():
         client_data = loads(request.data)
         client_data['lat'] = float(client_data['lat'])
         client_data['lng'] = float(client_data['lng'])
-        client_data['alt'] = float(client_data['alt'])  
+        client_data['alt'] = get_elevation(client_data)
         node_id = client_data["Device ID"]
         file_type = "json" if "type" not in client_data else client_data["type"]
     except Exception as e:
@@ -481,12 +481,12 @@ def get_future_data():
         dates.sort()
 
         with open(f"temp_files/future-forecast-{uid}.csv", "w") as file:
-            header_row = "Time Stamp, Condition, Humidity, Pressure, Rain Class, Rain Probability, Temperature\n"
+            header_row = "Time Stamp, Condition, Humidity, Pressure, Rain Class, Rain Class Probability, Temperature\n"
             file.write(header_row)
             for date in dates:
                 for timestamp in forecasted_weather[date]["forecast"]:
                     rain_class = rain_class_mapping[forecasted_weather[date]["rain_class"][timestamp]]
-                    rain_probability = 0 if rain_class == "0" else forecasted_weather[date]["rain_probability"][timestamp]
+                    rain_probability = 0 if rain_class == "0" else forecasted_weather[date]["rain_class_probability"][timestamp]
                     line = f'{timestamp}, {forecasted_weather[date]["condition"][timestamp]}, {forecasted_weather[date]["humidity"][timestamp]}, {forecasted_weather[date]["pressure"][timestamp]}, {rain_class}, {rain_probability}, {forecasted_weather[date]["temperature"][timestamp]}\n'
                     file.write(line)
 
@@ -505,8 +505,7 @@ def get_future_data():
         app.logger.error(get_log(logging.ERROR,request,str(e)+" Unable to fetch node data from redis as no connection"))
         return {"Status":"failed","reason":str(e)}
 
-    app.logger.info(get_log(logging.info,request,None))    
-    return jsonify(forecasted_weather)
+    
         
 
     
