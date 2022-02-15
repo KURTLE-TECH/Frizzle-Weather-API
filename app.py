@@ -176,7 +176,7 @@ def gen_report():
             for time in forecasted_weather[date]['temperature']:
                 times.append(format_time(time))
                 temp_data.append(forecasted_weather[date]['temperature'][time])
-                rain_data.append(forecasted_weather[date]['rain_probability'][time])
+                rain_data.append(forecasted_weather[date]['rain_class_probability'][time])
                 pressure_data.append(forecasted_weather[date]['pressure'][time])
                 humidity_data.append(forecasted_weather[date]['humidity'][time])
                 condition_data.append(forecasted_weather[date]['condition'][time])
@@ -567,7 +567,7 @@ def predict_forecast():
         client_data['days'] = 2
     
     data = forecast(request_type,client_data,config)
-
+    
     if data['status'] == 'fail':
         app.logger.error(f"Unable to forecast. Reason {data['reason']}")
         return data, 500
@@ -578,10 +578,7 @@ def predict_forecast():
     return jsonify(data['data'])
     
 
-    
-    
-
 #load_models()
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     app.run(host="0.0.0.0",debug=True,port=5000)
