@@ -187,11 +187,24 @@ def get_detailed_forecast(day,config,client_data):
        
     return day_forecast
 
+def get_detailed_forecast_api(day,config,client_data):
+    all_times = get_prediction_times(start_day = day,interval=30,days=None,time_zone="Asia/Kolkata")             
+    num_threads = len(all_times)
+    day_forecast = dict()
+    # with ThreadPoolExecutor(max_workers=num_threads) as e:            
+    #         futures = {e.submit(get_default_forecast,time,config,client_data):time for time in all_times}
+    #         for future in as_completed(futures):                    
+    #             day_forecast[futures[future].strftime("%y-%m-%d %H:%M:%S")] = future.result()  
+    for time_stamp in all_times:
+        day_forecast[time_stamp.strftime("%y-%m-%d %H:%M:%S")] = get_default_forecast(time_stamp,config,client_data)
+    return day_forecast
+    
+
 
 def get_default_forecast(time, config, client_data):
     try:
         weather_forecast = predict_weather(time, config, client_data)
-        print(weather_forecast)
+        #print(weather_forecast)
         weather_forecast['forecast'] = config["weather_condition"][str(weather_forecast['weather'][0])]
         # formatting to string
         weather_forecast['temp'] = str(int(weather_forecast['temp']))
@@ -207,6 +220,7 @@ def get_default_forecast(time, config, client_data):
         return weather_forecast
     except Exception as e:
         logging.error("default forecast "+str(e)+" "+str(e.__traceback__.tb_lineno))
+
 
 
 def get_data_from_redis(cluster_end_point,node_id):
@@ -249,6 +263,25 @@ def forecast(type,client_data,config):
             return {"status":"success","data":forecast_today}
         except Exception as e:
             return {"status":"fail","reason":str(e)}
+    
+    elif type == "detailed_new":
+        all_days = get_prediction_times(start_day = datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=None,days=client_data["days"],time_zone="Asia/Kolkata") 
+        forecasted_weather = dict()                
+                 
+        try: 
+            # with ThreadPoolExecutor(max_workers=client_data["days"]) as e:            
+            #     futures = {e.submit(get_detailed_forecast_api,day,config,client_data):day for day in all_days}
+            #     for future in as_completed(futures):                    
+            #         forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()            
+            for days in all_days:
+                forecasted_weather[days.strftime("%y-%m-%d")] = get_detailed_forecast_api(days,config,client_data)            
+            return {"status":"success","data":forecasted_weather}
+        except Exception as e:
+            return {"status":"fail","reason":str(e)}               
+
+
+
+
 
     elif type == "detailed":
         all_days = get_prediction_times(start_day = datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")                
