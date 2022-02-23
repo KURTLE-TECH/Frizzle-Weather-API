@@ -14,7 +14,7 @@ import pdfkit
 from PyPDF2 import PdfFileMerger
 from json import loads
 from datetime import datetime, time, tzinfo
-from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis,get_elevation
+from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log,get_detailed_forecast,get_data_from_redis,get_elevation,get_air_quality
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
 import logging
@@ -288,7 +288,7 @@ def get_prediction():
     elif request_type == "default":
         forecasted_weather = defaultdict()
           
-        prediction_times = get_prediction_times(start_day = get_closest_half_hour(datetime.now(tz=pytz.timezone("Asia/Kolkata"))),interval=30,days=None,time_zone="Asia/Kolkata")
+        prediction_times = get_prediction_times(start_day = get_closest_half_hour(datetime.now()),interval=30,days=None,time_zone="Asia/Kolkata")
         
         try:
             with ThreadPoolExecutor(max_workers=2) as e:            
@@ -325,7 +325,7 @@ def live_prediction():
     client_data['alt'] = get_elevation(client_data)
 
     try:                   
-        curr_time = datetime.now(tz=pytz.timezone("Asia/Kolkata"))
+        curr_time = pytz.timezone("Asia/Kolkata").localize(datetime.now())
         forecast_today = get_default_forecast(curr_time,config,client_data)       
     
 
@@ -576,7 +576,47 @@ def predict_forecast():
     _status = database_handler.insert(request_info,config["request_info_table"])
     app.logger.info(get_log(logging.INFO,request,None)+f"Generated {key} forecast for {key} at {datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')}")
     return jsonify(data['data'])
+
+@app.route("/api/air_quality",methods=["POST"])
+@cross_origin()
+def get_aqi():
+    try:
+        client_data = loads(request.data)
+        
+        if 'username' not in client_data.keys():
+            client_data['username'] = "unknown"
+        if 'email' not in client_data.keys():
+            client_data['email'] = "unknown"
+        
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+"Unable to load client data"+str(e.__traceback__.tb_lineno)))
+        return {"Status":"failed","reason":str(e)}, 400      
     
+    try:
+        key = request.args.get('key')
+        request_type = request.args.get('type')
+
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+"Parameters missing"+str(e.__traceback__.tb_lineno)))
+        return "Parameters missing",401
+    
+    validation = auth_object.validate_key(key,request_type)
+    if validation==False:
+        app.logger.error(f"No permission for {key}")
+        return "No permission for key", 403    
+    
+    try:
+        data = get_air_quality(client_data,request_type)
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR,request,str(e)+" "+str(e.__traceback__.tb_lineno)))
+        return "Unable to fetch air quality",500
+    
+    if data['status'] == 'pass':
+        return data['data']
+    else:
+        return data,500
+    
+
 
 #load_models()
 
