@@ -19,8 +19,13 @@ class Forecast(object):
             logging.error(e,e.__traceback__.tb_lineno)
 
     def temp_forecast(self,body,config):
-        temp_pred = config['temp_model'].predict(body)
-        return temp_pred
+        try:
+            temp_pred = config['temp_model'].predict(body)
+            return temp_pred
+        except Exception as e:
+            logging.error(e)
+            logging.error(str(e))
+            logging.error(e.__traceback__.tb_lineno)
 
     def press_forecast(self,body,config):
         press_pred = config['press_model'].predict(body)
@@ -42,6 +47,11 @@ class Forecast(object):
         rain_pred = config['rain_model'].predict(body)
         rain_pred_prob = config['rain_model'].predict_proba(body)
         return rain_pred[0],rain_pred_prob[0]
+
+    def rain_forecast_new(self,body,config):
+        rain_pred = config['rain_model'].predict(body)
+        rain_pred_prob = config['rain_model'].predict_proba(body)
+        return rain_pred[0],max(rain_pred_prob[0])
 
     def weath_forecast(self,body,config):
         try:
