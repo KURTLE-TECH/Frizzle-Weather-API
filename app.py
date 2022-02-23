@@ -362,7 +362,7 @@ def get_prediction():
                 request_info, config["request_info_table"])
             time_stamp = list(data['data'].keys())[0]
             print(time_stamp)
-            return {"condition":data['data'][time_stamp]['forecast'],"temerature":data['data'][time_stamp]['temp']}
+            return {"condition":data['data'][time_stamp]['forecast'],"temperature":data['data'][time_stamp]['temp']}
         else:
             return data
 
