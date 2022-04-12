@@ -20,7 +20,7 @@ import requests
 from sun_data import get_extra_info
 from timestream import run_query
 from concurrent.futures import ThreadPoolExecutor,as_completed
-
+import aqi
 
 
 def get_prediction_times(**kwargs):
@@ -414,21 +414,31 @@ def get_elevation(client_data):
         logging.error(str(e)+" Unable to fetch altitude")
         return 0
 
+def get_aqi(pm25,pm10,o3):
+    myaqi = aqi.to_aqi([
+            (aqi.POLLUTANT_PM25, pm25),
+            (aqi.POLLUTANT_PM10, pm10),
+            (aqi.POLLUTANT_O3_8H, o3)
+            ], algo=aqi.ALGO_INDIA)
+    return myaqi
+
 def get_air_quality(client_data,aqi_type):    
     if aqi_type=="current":
-        url = f"https://api.openweathermap.org/data/2.5/air_pollution?lat={float(client_data['lat'])}&lon={float(client_data['lng'])}&appid=3820c3503ba547ffa0ca1d4f5dc2d39a"
+        url = f"http://pro.openweathermap.org/data/2.5/air_pollution?lat={float(client_data['lat'])}&lon={float(client_data['lng'])}&appid=10d37b1710d191f034b1eb440707f19a"
         try:
             response = requests.get(url)
-            return {"status":"pass","data":response.json()['list'][0]['components']}
+            data = response.json()['list'][0]['components']
+            aqi = get_aqi(data['pm2_5'],data['pm10'],data['o3'])            
+            return {"status":"pass","data":{"aqi":int(aqi),"components":data}}
         except Exception as e:
             logging.error(str(e)+" Unable to fetch AQI")
             return {"status":"failed","reason":str(e)}
     elif aqi_type == "forecast":
-        url = f"https://api.openweathermap.org/data/2.5/air_pollution/forecast?lat={float(client_data['lat'])}&lon={float(client_data['lng'])}&appid=3820c3503ba547ffa0ca1d4f5dc2d39a"
+        url = f"http://pro.openweathermap.org/data/2.5/air_pollution/forecast?lat={float(client_data['lat'])}&lon={float(client_data['lng'])}&appid=10d37b1710d191f034b1eb440707f19a"
         try:
             response = requests.get(url)
             timestamp = int(response.json()['list'][0]['dt'])            
-            return {"status":"pass","data":{datetime.fromtimestamp(i['dt']).strftime('%y-%m-%d %H:%M:%S'):i['components'] for i in response.json()['list']}}
+            return {"status":"pass","data":{datetime.fromtimestamp(i['dt']).strftime('%y-%m-%d %H:%M:%S'):{'aqi':int(get_aqi(i['components']['pm2_5'],i['components']['pm10'],i['components']['o3'])),'components':i['components']} for i in response.json()['list']}}
         except Exception as e:
             logging.error(str(e)+" Unable to fetch AQI")
             return {"status":"failed","reason":str(e)}
