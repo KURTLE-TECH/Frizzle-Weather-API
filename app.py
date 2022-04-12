@@ -645,7 +645,7 @@ def predict_forecast():
     client_data['alt'] = get_elevation(client_data)
 
     # authenticate key
-    validation = auth_object.validate_key(key, request_type)
+    validation = auth_object.validate_key(key, "forecast_"+request_type)
     if validation == False:
         app.logger.error(f"No permission for {key}")
         return "No permission for key", 403
@@ -662,13 +662,9 @@ def predict_forecast():
     if data['status'] == 'fail':
         app.logger.error(f"Unable to forecast. Reason {data['reason']}")
         return data, 500
-
-    request_info = {"time-stamp": datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"), "username": key,
-                    "lat": f"{client_data['lat']}", 'lng': f"{client_data['lng']}", "type": type}
-    _status = database_handler.insert(
-        request_info, config["request_info_table"])
+    
     app.logger.info(get_log(logging.INFO, request, None) +
-                    f"Generated {key} forecast for {key} at {datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')}")
+                    f" Generated {request_type} forecast for {key} at {datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')}")
     return jsonify(data['data'])
 
 
@@ -697,7 +693,7 @@ def get_aqi():
             e)+"Parameters missing"+str(e.__traceback__.tb_lineno)))
         return "Parameters missing", 401
 
-    validation = auth_object.validate_key(key, request_type)
+    validation = auth_object.validate_key(key, "aqi_"+request_type)
     if validation == False:
         app.logger.error(f"No permission for {key}")
         return "No permission for key", 403
@@ -709,7 +705,9 @@ def get_aqi():
             e)+" "+str(e.__traceback__.tb_lineno)))
         return "Unable to fetch air quality", 500
 
-    if data['status'] == 'pass':
+    if data['status'] == 'pass':  
+        app.logger.info(get_log(logging.INFO, request, None) +
+                    f" Generated {request_type} air quality for {key} at {datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')}")      
         return data['data']
     else:
         return data, 500
