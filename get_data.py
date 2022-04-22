@@ -117,7 +117,8 @@ def predict_weather(time, config, client_data):
     weather_forecast = dict()
 
     body = model_object.transform_data(
-        client_data['lat'], client_data['lng'], client_data['alt'], time_string)            
+        client_data['lat'], client_data['lng'], client_data['alt'], time_string)
+    #print(body)
     weather_forecast['temp'] = model_object.temp_forecast(body, config)[0]
     
     body = np.append(body, weather_forecast['temp']).reshape(1, -1)
@@ -134,10 +135,11 @@ def predict_weather(time, config, client_data):
     clouds = model_object.cloud_forecast(pd.DataFrame(body, columns=[
                                          'lat', 'lon', 'dayofweek', 'quarter', 'month', 'dayofyear', 'dayofmonth', 'weekofyear', 'minutes', 'year', 'altitude', 'temp', 'pressure', 'humidity']), config)[0]
     body = np.append(body, clouds).reshape(1, -1)
-    rain_op = model_object.rain_forecast(body, config)
+    rain_op = model_object.rain_forecast_new(body, config)
 
-    weather_forecast['rain_class_probability'] = int(
-        rain_op[1][int(rain_op[0])]*100)
+    # weather_forecast['rain_class_probability'] = int(
+        # rain_op[1][int(rain_op[0])]*100)
+    weather_forecast['rain_class_probability'] = rain_op[1]
     weather_forecast['rain_class'] = int(rain_op[0])
     body = np.append(body, rain_op[0]).reshape(1, -1)
 
@@ -147,17 +149,46 @@ def predict_weather(time, config, client_data):
 
 def predict_weather_batch(times_dataframe,client_data,config):
     try:
-        model_object = Forecast()
+        # model_object = Forecast()
+        # # print(times_dataframe)
+        # times_dataframe['temp'] = model_object.temp_forecast(times_dataframe, config)
+        # times_dataframe['pressure'] = model_object.press_forecast(times_dataframe, config)
+        # times_dataframe['humidity'] = model_object.humid_class(times_dataframe, config)
+        # times_dataframe['clouds_all'] = model_object.cloud_forecast(times_dataframe, config)        
+        # # times_dataframe['clouds_all'] = times_dataframe['clouds_all'].apply(lambda x:int(x))
+        # times_dataframe['rain_1h'], rain_op_prob = model_object.rain_forecast_new(times_dataframe, config)
+        # # times_dataframe['rain_1h'] = times_dataframe['rain_1h'].apply(lambda x:int(x))        
+        # times_dataframe['forecast'],_ = model_object.weath_forecast(times_dataframe, config)                 
+        # times_dataframe['rain_class_probability'] = rain_op_prob     
+
+        model_object = Forecast()    
+
+        tempa = model_object.temp_forecast(times_dataframe, config)                
+        times_dataframe['temp'] = tempa
+
+        pres= model_object.press_forecast(times_dataframe, config)
+        times_dataframe['pressure'] = pres
+
+        hum = model_object.humid_class(times_dataframe, config)
+        times_dataframe['humidity'] = hum
+
+        clouda = model_object.cloud_forecast(times_dataframe, config)  
+        times_dataframe['clouds_all'] = clouda   
         
-        times_dataframe['temp'] = model_object.temp_forecast(times_dataframe, config)
-        times_dataframe['pressure'] = model_object.press_forecast(times_dataframe, config)
-        times_dataframe['humidity'] = model_object.humid_class(times_dataframe, config)
-        times_dataframe['clouds_all'] = model_object.cloud_forecast(times_dataframe, config)        
-        # times_dataframe['clouds_all'] = times_dataframe['clouds_all'].apply(lambda x:int(x))
-        times_dataframe['rain_1h'], rain_op_prob = model_object.rain_forecast_new(times_dataframe, config)
-        # times_dataframe['rain_1h'] = times_dataframe['rain_1h'].apply(lambda x:int(x))        
-        times_dataframe['forecast'],_ = model_object.weath_forecast(times_dataframe, config)                 
-        times_dataframe['rain_class_probability'] = rain_op_prob        
+
+        raina= model_object.rain_forecast_new(times_dataframe, config)
+        times_dataframe['rain_1h'] = raina
+
+
+        rain_op_prob = model_object.rain_forecast_prob(times_dataframe, config)
+        times_dataframe['rain_class_probability'] = rain_op_prob
+        
+             
+        forecast = model_object.weath_forecast(times_dataframe, config)        
+        times_dataframe['forecast'] = forecast
+
+        
+      
         return times_dataframe
     
     except Exception as e:
@@ -166,24 +197,43 @@ def predict_weather_batch(times_dataframe,client_data,config):
 
 def predict_weather_batch_dashboard(times_dataframe,client_data,config):
     try:
-        model_object = Forecast()
+        model_object = Forecast()    
+
+        tempa = model_object.temp_forecast(times_dataframe, config)                
+        times_dataframe['temp'] = tempa
+
+        pres= model_object.press_forecast(times_dataframe, config)
+        times_dataframe['pressure'] = pres
+
+        hum = model_object.humid_class(times_dataframe, config)
+        times_dataframe['humidity'] = hum
+
+        clouda = model_object.cloud_forecast(times_dataframe, config)  
+        times_dataframe['clouds_all'] = clouda   
         
-        times_dataframe['temp'] = model_object.temp_forecast(times_dataframe, config)
-        times_dataframe['pressure'] = model_object.press_forecast(times_dataframe, config)
-        times_dataframe['humidity'] = model_object.humid_class(times_dataframe, config)
-        times_dataframe['clouds_all'] = model_object.cloud_forecast(times_dataframe, config)        
-        # times_dataframe['clouds_all'] = times_dataframe['clouds_all'].apply(lambda x:int(x))
-        times_dataframe['rain_1h'], rain_op_prob = model_object.rain_forecast_new(times_dataframe, config)
-        # times_dataframe['rain_1h'] = times_dataframe['rain_1h'].apply(lambda x:int(x))        
-        times_dataframe['forecast'],forecast_op = model_object.weath_forecast(times_dataframe, config)                 
+
+        raina= model_object.rain_forecast_new(times_dataframe, config)
+        times_dataframe['rain_1h'] = raina
+
+
+        rain_op_prob = model_object.rain_forecast_prob(times_dataframe, config)
         times_dataframe['rain_class_probability'] = rain_op_prob
-        print("forecast op",forecast_op)
-        times_dataframe['0'] = forecast_op[0]
-        times_dataframe['1'] = forecast_op[1]
-        times_dataframe['2'] = forecast_op[2]
-        times_dataframe['3'] = forecast_op[3]
-        times_dataframe['4'] = forecast_op[4]
-        times_dataframe['5'] = forecast_op[5]
+        
+             
+        forecast = model_object.weath_forecast(times_dataframe, config)        
+        times_dataframe['forecast'] = forecast
+
+        forecast_op = model_object.weath_forecast_op(times_dataframe, config) 
+        
+
+        times_dataframe['0'] = np.array([i[0] for i in forecast_op])
+        times_dataframe['1'] = np.array([i[1] for i in forecast_op])
+        times_dataframe['2'] = np.array([i[2] for i in forecast_op])
+        times_dataframe['3'] = np.array([i[3] for i in forecast_op])
+        times_dataframe['4'] = np.array([i[4] for i in forecast_op])
+        times_dataframe['5'] = np.array([i[5] for i in forecast_op])
+
+
         return times_dataframe
     except Exception as e:
         logging.error(str(e)+f"{ e.__traceback__.tb_lineno}")
@@ -203,17 +253,20 @@ def get_detailed_forecast(day,config,client_data):
     day_forecast = {"temperature":{},"pressure":{},"humidity":{},"forecast":{},"rain_class_probability":{},'rain_class':{},"condition":{}}
     
     all_times_dataframe = pd.DataFrame(all_times,columns=["datetime"])      
-
+    
     all_times_dataframe = pre_process_times(all_times,client_data)       
     
-    all_times_dataframe = all_times_dataframe[['lat','lon','dayofweek', 'quarter', 'month','dayofyear', 'dayofmonth', 'weekofyear','minutes','year','altitude']]
+    # all_times_dataframe = all_times_dataframe[['lat','lon','dayofweek', 'quarter', 'month','dayofyear', 'dayofmonth', 'weekofyear','minutes','year','altitude']]
+    
     
     #holy grail
-    predicted_dataframe = predict_weather_batch_dashboard(all_times_dataframe,client_data,config)     
+    predicted_dataframe = predict_weather_batch_dashboard(all_times_dataframe.drop('datetime',axis=1),client_data,config)     
     
     # df = predicted_dataframe[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast','forecast_probabilities']]                      
     weather_forecast = post_process_predictions_dashboard(predicted_dataframe,all_times,config)
     # print(weather_forecast)
+
+    
     for time in all_times:
         time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
         day_forecast['condition'][time_string] = None
@@ -264,7 +317,7 @@ def get_detailed_forecast_api(day,config,client_data):
         all_times_dataframe = pre_process_times(all_times,client_data)       
         
         all_times_dataframe = all_times_dataframe[['lat','lon','dayofweek', 'quarter', 'month','dayofyear', 'dayofmonth', 'weekofyear','minutes','year','altitude']]
-        
+        # print(all_times_dataframe)
         #holy grail
         predicted_dataframe = predict_weather_batch(all_times_dataframe,client_data,config)   
         
@@ -280,7 +333,7 @@ def get_detailed_forecast_api(day,config,client_data):
 def get_default_forecast(time, config, client_data):
     try:
         weather_forecast = predict_weather(time, config, client_data)
-        
+        # print(weather_forecast)
         weather_forecast['forecast'] = config["weather_condition"][str(weather_forecast['weather'][0])]
         
         weather_forecast['temp'] = str(int(weather_forecast['temp']))
@@ -329,7 +382,7 @@ def get_past_data_from_timestream(node_id,client):
         logging.error(f"Could not get past data from timestream for node {node_id} due to {str(e)}")
         return {}
 
-def forecast(type,client_data,config):
+def forecast(type,client_data,config):    
     if type == "current":
         try:
             curr_time = datetime.now() 
@@ -348,7 +401,7 @@ def forecast(type,client_data,config):
     elif type == "detailed_new":
         all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata") 
         forecasted_weather = dict()                
-        print(all_days)         
+        #print(all_days)         
         try:                       
             for days in all_days:
                 forecasted_weather[days.strftime("%y-%m-%d")] = get_detailed_forecast_api(days,config,client_data)            
@@ -392,7 +445,7 @@ def forecast(type,client_data,config):
 
         try:
             all_times = [time_object]
-            print(all_times)            
+            #print(all_times)            
             all_times_dataframe = pre_process_times(all_times,client_data)
             all_times_dataframe = all_times_dataframe[['lat','lon','dayofweek', 'quarter', 'month','dayofyear', 'dayofmonth', 'weekofyear','minutes','year','altitude']]
             
