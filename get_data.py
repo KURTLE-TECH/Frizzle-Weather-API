@@ -108,6 +108,13 @@ def get_closest_half_hour(curr_time):
         start_time = curr_time+timedelta(minutes=60-curr_time.minute) 
     return start_time
 
+def round_to_hour(curr_time):        
+    if curr_time.minute<30:
+        start_time = curr_time-timedelta(minutes=curr_time.minute) 
+    else:
+        start_time = curr_time+timedelta(minutes=60-curr_time.minute) 
+    return start_time
+
 
 def predict_weather(time, config, client_data):
     time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
@@ -307,9 +314,9 @@ def get_detailed_forecast(day,config,client_data):
 
 
 
-def get_detailed_forecast_api(day,config,client_data):    
+def get_detailed_forecast_api(all_times,config,client_data):    
     try:
-        all_times = get_prediction_times(start_day = day,interval=30,days=None,time_zone="Asia/Kolkata")           
+        # all_times = get_prediction_times(start_day = day,interval=30,days=None,time_zone="Asia/Kolkata")           
         all_times_dataframe = pd.DataFrame(all_times,columns=["datetime"])   
         # print(all_times,"*****",all_times_dataframe)        
         
@@ -322,9 +329,14 @@ def get_detailed_forecast_api(day,config,client_data):
         predicted_dataframe = predict_weather_batch(all_times_dataframe,client_data,config)   
         
         df = predicted_dataframe[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast']]                      
+        forecasted_dict = dict()
         forecasted_dict = post_process_predictions(df,all_times,config)
+        print("Forecasted dict",forecasted_dict)
     except Exception as e:
-            logging.error(str(e)+" "+str(e.__traceback__.tb_lineno),)
+            print(str(e))
+            print(str(e.__traceback__.tb_lineno))
+            logging.error(str(e)+" "+str(e.__traceback__.tb_lineno))
+
     
     return forecasted_dict
     
@@ -417,15 +429,25 @@ def forecast(type,client_data,config):
         # all_days = get_prediction_times(start_day = datetime.now(tz=pytz.timezone("Asia/Kolkata")),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")                
         forecasted_weather = dict()                
         try:
-            all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")             
+            all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")  
+            all_times = list()           
+            for day in all_days:
+                if datetime.now().day == day.day:
+                    start_time = round_to_hour(datetime.now())
+                    all_times.extend(get_prediction_times(start_day=start_time,interval=60,days=None,time_zone="Asia/Kolkata"))
+                else:
+                    all_times.extend(get_prediction_times(start_day=day,interval=60,days=None,time_zone="Asia/Kolkata"))
+                # all_times.extend(get_prediction_times(start_day = day,interval=60,days=None,time_zone="Asia/Kolkata"))
             forecasted_weather = dict()                
-            with ThreadPoolExecutor(max_workers=client_data["days"]) as e:            
-                futures = {e.submit(get_detailed_forecast_api,day,config,client_data):day for day in all_days}
-                for future in as_completed(futures):                    
-                    forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()            
+            # with ThreadPoolExecutor(max_workers=client_data["days"]) as e:            
+            #     futures = {e.submit(get_detailed_forecast_api,day,config,client_data):day for day in all_days}
+            #     for future in as_completed(futures):                    
+            #         forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()            
+            # print("all times",all_times)
+            forecasted_weather = get_detailed_forecast_api(all_times,config,client_data)
             return {"status":"success","data":forecasted_weather}
         except Exception as e:
-            return {"status":"fail","reason":str(e)}
+            return {"status":"fail","reason":str(e)+" "+str(e.__traceback__.tb_lineno)}
 
     elif type == "particular":
         client_data['year'] = int(client_data['year'])
