@@ -170,29 +170,26 @@ def predict_weather_batch(times_dataframe,client_data,config):
 
         model_object = Forecast()    
 
-        tempa = model_object.temp_forecast(times_dataframe, config)                
-        times_dataframe['temp'] = tempa
-
-        pres= model_object.press_forecast(times_dataframe, config)
-        times_dataframe['pressure'] = pres
-
-        hum = model_object.humid_class(times_dataframe, config)
-        times_dataframe['humidity'] = hum
-
-        clouda = model_object.cloud_forecast(times_dataframe, config)  
-        times_dataframe['clouds_all'] = clouda   
+        times_dataframe['temp'] = model_object.temp_forecast(times_dataframe, config)                
         
 
-        raina= model_object.rain_forecast_new(times_dataframe, config)
-        times_dataframe['rain_1h'] = raina
+        times_dataframe['pressure']= model_object.press_forecast(times_dataframe, config)
+        
 
+        times_dataframe['humidity']  = model_object.humid_class(times_dataframe, config)
+        
 
-        rain_op_prob = model_object.rain_forecast_prob(times_dataframe, config)
-        times_dataframe['rain_class_probability'] = rain_op_prob
+        times_dataframe['clouds_all'] = model_object.cloud_forecast(times_dataframe, config)           
+        
+
+        times_dataframe['rain_1h'] = model_object.rain_forecast_new(times_dataframe, config)
+        
+
+        times_dataframe['rain_class_probability'] = model_object.rain_forecast_prob(times_dataframe, config)         
         
              
-        forecast = model_object.weath_forecast(times_dataframe, config)        
-        times_dataframe['forecast'] = forecast
+        times_dataframe['forecast'] = model_object.weath_forecast(times_dataframe, config)        
+
 
         
       
@@ -331,7 +328,7 @@ def get_detailed_forecast_api(all_times,config,client_data):
         df = predicted_dataframe[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast']]                      
         forecasted_dict = dict()
         forecasted_dict = post_process_predictions(df,all_times,config)
-        print("Forecasted dict",forecasted_dict)
+        # print("Forecasted dict",forecasted_dict)
     except Exception as e:
             print(str(e))
             print(str(e.__traceback__.tb_lineno))
@@ -434,9 +431,9 @@ def forecast(type,client_data,config):
             for day in all_days:
                 if datetime.now().day == day.day:
                     start_time = round_to_hour(datetime.now())
-                    all_times.extend(get_prediction_times(start_day=start_time,interval=60,days=None,time_zone="Asia/Kolkata"))
+                    all_times.extend(get_prediction_times(start_day=start_time,interval=240,days=None,time_zone="Asia/Kolkata"))
                 else:
-                    all_times.extend(get_prediction_times(start_day=day,interval=60,days=None,time_zone="Asia/Kolkata"))
+                    all_times.extend(get_prediction_times(start_day=day,interval=240,days=None,time_zone="Asia/Kolkata"))
                 # all_times.extend(get_prediction_times(start_day = day,interval=60,days=None,time_zone="Asia/Kolkata"))
             forecasted_weather = dict()                
             # with ThreadPoolExecutor(max_workers=client_data["days"]) as e:            
