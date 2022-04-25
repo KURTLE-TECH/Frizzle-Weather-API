@@ -41,6 +41,7 @@ class Forecast(object):
         
     def cloud_forecast(self,body,config):
         cloud_pred = config['cloud_model'].predict(body)
+        cloud_pred = cloud_pred.astype(int)
         return cloud_pred
 
     def rain_forecast(self,body,config):
@@ -50,14 +51,31 @@ class Forecast(object):
 
     def rain_forecast_new(self,body,config):
         rain_pred = config['rain_model'].predict(body)
+        #rain_pred_prob = config['rain_model'].predict_proba(body)
+        return rain_pred
+
+    def rain_forecast_prob(self,body,config):
+        #rain_pred = config['rain_model'].predict(body)
         rain_pred_prob = config['rain_model'].predict_proba(body)
-        return rain_pred[0],max(rain_pred_prob[0])
+        rain_pred_prob = rain_pred_prob.astype(float)
+        return np.array([max(i) for i in rain_pred_prob])
 
     def weath_forecast(self,body,config):
         try:
             weath_pred = config['weather_model'].predict(body)
+            #weath_pred_proba = config['weather_model'].predict_proba(body)
+            return weath_pred
+        except Exception as e:
+            print("*******")
+            print(e)
+            print(e.__traceback__.tb_lineno)            
+            return "no"
+
+    def weath_forecast_op(self,body,config):
+        try:
+            #weath_pred = config['weather_model'].predict(body)
             weath_pred_proba = config['weather_model'].predict_proba(body)
-            return weath_pred[0],weath_pred_proba[0]
+            return weath_pred_proba
         except Exception as e:
             print("*******")
             print(e)

@@ -36,21 +36,13 @@ warnings.filterwarnings("ignore")
 
 with open("config.json", "r") as f:
     config = loads(f.read())
-
-    config['frizzle-humidity-wrapper'] = humid_model()
-    config['temp_model'] = joblib.load(
-        'production_script/models/temp_20_12_NR_model.sav')
-    config['press_model'] = joblib.load(
-        'production_script/models/press_06_01_22_nonreal_time_model.sav')
-    # config['humid_model'] = joblib.load('production_script/models/humid.sav')
-    config['humid_class'] = joblib.load(
-        'production_script/models/hum_8_class_07_01_NR_model.sav')
-    config['cloud_model'] = joblib.load(
-        'production_script/models/clouds_class_7_1_NR_model_v3.sav')
-    config['rain_model'] = joblib.load(
-        'production_script/models/rain_class_7_1_NR_model_Coimb_v2.sav')
-    config['weather_model'] = joblib.load(
-        'production_script/models/weath_class_7_1_NR_model_Coimb_v2.sav')
+    
+    config['temp_model'] = joblib.load(config['models']['temperature_model'])
+    config['press_model'] = joblib.load(config['models']['pressure_model'])
+    config['humid_class'] = joblib.load(config['models']['humidity_model'])
+    config['cloud_model'] = joblib.load(config['models']['cloud_model'])
+    config['rain_model'] = joblib.load(config['models']['rain_model'])
+    config['weather_model'] = joblib.load(config['models']['weather_model'])
 
 
 redis_endpoint = redis_cluster_endpoint = redis.Redis(
@@ -318,7 +310,7 @@ def get_prediction():
             futures = {e.submit(get_detailed_forecast, day,
                                 config, client_data): day for day in all_days}
             for future in as_completed(futures):
-                # print("Future value",futures[future])
+                #print("Future value",future.result())
                 forecasted_weather[futures[future].strftime(
                     "%y-%m-%d")] = future.result()
         # for day in all_days:
@@ -360,7 +352,7 @@ def get_prediction():
 
     elif request_type == "live":
         data = forecast("current",client_data,config)
-        print(data)
+        #print(data)
         if data['status']=="success":
             app.logger.info(get_log(logging.INFO, request, None))
             request_info = {"time-stamp": datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),
@@ -377,10 +369,10 @@ def get_prediction():
 @app.route("/api/live_prediction", methods=["POST"])
 def live_prediction():
     try:
-        print(request.data)
+        #print(request.data)
         client_data = loads(request.data)
-        print(request.json)
-        print(client_data)
+        #print(request.json)
+        #print(client_data)
         client_data['lat'] = float(client_data['lat'])
         client_data['lng'] = float(client_data['lng'])
         # client_data['alt'] = float(client_data['elevation'])
