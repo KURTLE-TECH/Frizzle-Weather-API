@@ -477,10 +477,10 @@ def forecast(type,client_data,config):
         except Exception as e:                    
             return {"status":"fail","reason":str(e)+str(e.__traceback__.tb_lineno)}   
 
-def get_elevation(client_data):
-    url = f"https://maps.googleapis.com/maps/api/elevation/json?locations={client_data['lat']}%2C{client_data['lng']}&key=AIzaSyBpe-HV4Z7gJjexZAs_bmwJvf6qyWu1Lz8"
+def get_elevation(client_data):    
+    url = f"http://elevation.frizzleweather.com/v1/gebco2020?locations={client_data['lat']},{client_data['lng']}"
     try:
-        response = requests.post(url)
+        response = requests.get(url)        
         return float(response.json()['results'][0]['elevation'])
     except Exception as e:
         logging.error(str(e)+" Unable to fetch altitude")
