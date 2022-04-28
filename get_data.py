@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta,timezone
 import logging
+# from pyexpat import model
 import pytz
 from database import DynamodbHandler as db
 from math import sin,cos,asin,sqrt,radians
@@ -117,42 +118,48 @@ def round_to_hour(curr_time):
 
 
 def predict_weather(time, config, client_data):
-    time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
-    # model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
+    try:
+        time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+        # model_object = Endpoint_Object.Endpoint_Calls(config['region'],config['access_key'],config['secret_access_key'],config['models'])
 
-    model_object = Forecast()
-    weather_forecast = dict()
+        model_object = Forecast()
+        weather_forecast = dict()
 
-    body = model_object.transform_data(
-        client_data['lat'], client_data['lng'], client_data['alt'], time_string)
-    #print(body)
-    weather_forecast['temp'] = model_object.temp_forecast(body, config)[0]
-    
-    body = np.append(body, weather_forecast['temp']).reshape(1, -1)
-    
-    weather_forecast['pressure'] = model_object.press_forecast(body, config)[0]
-    body = np.append(body, weather_forecast['pressure']).reshape(1, -1)
-    
+        body = model_object.transform_data(client_data['lat'], client_data['lng'], client_data['alt'], time_string)
+        
+        weather_forecast['temp'] = model_object.temp_forecast(body, config)[0]
+        
+        body = np.append(body, weather_forecast['temp']).reshape(1, -1)
+        
+        weather_forecast['pressure'] = model_object.press_forecast(body, config)[0]
+        body = np.append(body, weather_forecast['pressure']).reshape(1, -1)
+        
 
-    humidity_output = model_object.humid_class(body, config)[0]
-    weather_forecast['humidity'] = config["humidity_class"][str(
-        humidity_output)]
-    body = np.append(body, humidity_output).reshape(1, -1)    
-    # logging.info(config['cloud_model'].get_booster().feature_names)
-    clouds = model_object.cloud_forecast(pd.DataFrame(body, columns=[
-                                         'lat', 'lon', 'dayofweek', 'quarter', 'month', 'dayofyear', 'dayofmonth', 'weekofyear', 'minutes', 'year', 'altitude', 'temp', 'pressure', 'humidity']), config)[0]
-    body = np.append(body, clouds).reshape(1, -1)
-    rain_op = model_object.rain_forecast_new(body, config)
+        humidity_output = model_object.humid_class(body, config)[0]
+        weather_forecast['humidity'] = config["humidity_class"][str(
+            humidity_output)]
+        body = np.append(body, humidity_output).reshape(1, -1)    
+        
+        clouds = model_object.cloud_forecast(pd.DataFrame(body, columns=['lat', 'lon', 'dayofweek', 'quarter', 'month', 'dayofyear', 'dayofmonth', 'weekofyear', 'minutes', 'year', 'altitude', 'temp', 'pressure', 'humidity']), config)[0]
+        # clouds = model_object.cloud_forecast(body,config)
+        body = np.append(body, clouds).reshape(1, -1)
+        rain_op = model_object.rain_forecast(body, config)
 
-    # weather_forecast['rain_class_probability'] = int(
-        # rain_op[1][int(rain_op[0])]*100)
-    weather_forecast['rain_class_probability'] = rain_op[1]
-    weather_forecast['rain_class'] = int(rain_op[0])
-    body = np.append(body, rain_op[0]).reshape(1, -1)
+        weather_forecast['rain_class_probability'] = int(
+            rain_op[1][int(rain_op[0])]*100)
+        # weather_forecast['rain_class_probability'] = rain_op[1]
 
-    weather_op = model_object.weath_forecast(body, config)
-    weather_forecast['weather'] = weather_op
-    return weather_forecast
+        weather_forecast['rain_class'] = int(rain_op[0])
+        body = np.append(body, rain_op[0]).reshape(1, -1)
+
+        weather_op = model_object.weath_forecast(body, config)
+        weather_forecast['weather'] = weather_op
+        weather_forecast['weather_probabilities'] = model_object.weath_forecast_op(body,config)
+        # print(weather_forecast['w'])
+        return weather_forecast
+    except Exception as e:
+        logging.error(e.__str__+f" {e.__traceback__.tb_lineno}")
+        return {}
 
 def predict_weather_batch(times_dataframe,client_data,config):
     try:
@@ -196,7 +203,7 @@ def predict_weather_batch(times_dataframe,client_data,config):
         return times_dataframe
     
     except Exception as e:
-        logging.error(str(e)+f"{ e.__traceback__.tb_lineno}")
+        logging.error(str(e)+f"{e.__traceback__.tb_lineno}")
         return {}
 
 def predict_weather_batch_dashboard(times_dataframe,client_data,config):
@@ -264,7 +271,8 @@ def get_detailed_forecast(day,config,client_data):
     
     
     #holy grail
-    predicted_dataframe = predict_weather_batch_dashboard(all_times_dataframe.drop('datetime',axis=1),client_data,config)     
+    predicted_dataframe = predict_weather_batch_dashboard(all_times_dataframe.drop('datetime',axis=1),client_data,config)   
+    print(predicted_dataframe[['hour','minutes','year','dayofmonth','year','temp','pressure','humidity','clouds_all','rain_1h','0','1','2','3','4','5']])
     
     # df = predicted_dataframe[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast','forecast_probabilities']]                      
     weather_forecast = post_process_predictions_dashboard(predicted_dataframe,all_times,config)
@@ -341,20 +349,19 @@ def get_detailed_forecast_api(all_times,config,client_data):
 
 def get_default_forecast(time, config, client_data):
     try:
-        weather_forecast = predict_weather(time, config, client_data)
-        # print(weather_forecast)
+        weather_forecast = predict_weather(time, config, client_data)                
         weather_forecast['forecast'] = config["weather_condition"][str(weather_forecast['weather'][0])]
         
         weather_forecast['temp'] = str(int(weather_forecast['temp']))
         weather_forecast['pressure'] = str(int(weather_forecast['pressure']))
         weather_forecast['humidity'] = str(int(weather_forecast['humidity']))
-        
-
-        weather_forecast['rain_class_probability'] = str(int(weather_forecast['weather'][1][weather_forecast['weather'][0]]*100))
+        weather_forecast['rain_class_probability'] = str(int(weather_forecast['weather_probabilities'][0][weather_forecast['weather'][0]]*100))
         weather_forecast['rain_class'] = str(int(weather_forecast['rain_class']))
         weather_forecast.pop('weather',None)
+        weather_forecast.pop('weather_probabilities',None)
         return weather_forecast
-    except Exception as e:
+    
+    except Exception as e:        
         logging.error("default forecast "+str(e)+" "+str(e.__traceback__.tb_lineno))
 
 

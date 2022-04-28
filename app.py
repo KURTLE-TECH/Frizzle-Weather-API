@@ -14,7 +14,7 @@ import pdfkit
 from PyPDF2 import PdfFileMerger
 from json import loads
 from datetime import datetime, time, tzinfo
-from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log, get_detailed_forecast, get_data_from_redis, get_elevation, get_air_quality
+from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log, get_detailed_forecast, get_data_from_redis, get_elevation, get_air_quality,round_to_hour
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
 import logging
@@ -325,9 +325,18 @@ def get_prediction():
 
     elif request_type == "default":
         forecasted_weather = defaultdict()
+        # prediction_times = get_prediction_times(start_day=get_closest_half_hour(
+        #     datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata")
 
-        prediction_times = get_prediction_times(start_day=get_closest_half_hour(
-            datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata")
+        all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")  
+        prediction_times = list()           
+        for day in all_days:
+                if datetime.now().day == day.day:
+                    start_time = round_to_hour(datetime.now())
+                    prediction_times.extend(get_prediction_times(start_day=start_time,interval=30,days=None,time_zone="Asia/Kolkata"))
+                else:
+                    prediction_times.extend(get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata"))
+                # all_times.extend(get_prediction_times(start_day = day,interval=60,days=None,time_zone="Asia/Kolkata"))            
 
         try:
             with ThreadPoolExecutor(max_workers=2) as e:
@@ -338,7 +347,7 @@ def get_prediction():
                     forecasted_weather[futures[future].strftime(
                         "%Y-%m-%d %H:%M:%S")] = future.result()
         except Exception as e:
-            app.logger.error("Line number "+e.__traceback__.tb_lineno)
+            app.logger.error("Line number "+e.__traceback__.tb_lineno)            
             # print(e.__traceback__.)
             app.logger.error(get_log(logging.ERROR, request, str(e)))
             return jsonify({"Status": "Failed", "Reason": str(e)})
