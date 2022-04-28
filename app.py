@@ -325,17 +325,17 @@ def get_prediction():
 
     elif request_type == "default":
         forecasted_weather = defaultdict()
-        # prediction_times = get_prediction_times(start_day=get_closest_half_hour(
-        #     datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata")
+        prediction_times = get_prediction_times(start_day=get_closest_half_hour(
+            datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata")
 
-        all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")  
-        prediction_times = list()           
-        for day in all_days:
-                if datetime.now().day == day.day:
-                    start_time = round_to_hour(datetime.now())
-                    prediction_times.extend(get_prediction_times(start_day=start_time,interval=30,days=None,time_zone="Asia/Kolkata"))
-                else:
-                    prediction_times.extend(get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata"))
+        # all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")  
+        # prediction_times = list()           
+        # for day in all_days:
+        #         if datetime.now().day == day.day:
+        #             start_time = round_to_hour(datetime.now())
+        #             prediction_times.extend(get_prediction_times(start_day=start_time,interval=30,days=None,time_zone="Asia/Kolkata"))
+        #         else:
+        #             prediction_times.extend(get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata"))
                 # all_times.extend(get_prediction_times(start_day = day,interval=60,days=None,time_zone="Asia/Kolkata"))            
 
         try:
