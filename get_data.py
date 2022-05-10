@@ -158,7 +158,7 @@ def predict_weather(time, config, client_data):
         # print(weather_forecast['w'])
         return weather_forecast
     except Exception as e:
-        logging.error(e.__str__+f" {e.__traceback__.tb_lineno}")
+        logging.error("predict weather error "+ e.__str__+" "+f" {e.__traceback__.tb_lineno}")
         return {}
 
 def predict_weather_batch(times_dataframe,client_data,config):
@@ -349,17 +349,22 @@ def get_detailed_forecast_api(all_times,config,client_data):
 
 def get_default_forecast(time, config, client_data):
     try:
-        weather_forecast = predict_weather(time, config, client_data)                
-        weather_forecast['forecast'] = config["weather_condition"][str(weather_forecast['weather'][0])]
+        all_times = [time]
+        time_dataframe = pre_process_times(all_times,client_data)   
+        # time_dataframe = 
+        weather_forecast = predict_weather_batch(time_dataframe[['lat','lon','dayofweek', 'quarter', 'month','dayofyear', 'dayofmonth', 'weekofyear','minutes','year','altitude']], client_data, config)                
+        # weather_forecast['forecast'] = config["weather_condition"][str(weather_forecast['weather'][0])]
         
-        weather_forecast['temp'] = str(int(weather_forecast['temp']))
-        weather_forecast['pressure'] = str(int(weather_forecast['pressure']))
-        weather_forecast['humidity'] = str(int(weather_forecast['humidity']))
-        weather_forecast['rain_class_probability'] = str(int(weather_forecast['weather_probabilities'][0][weather_forecast['weather'][0]]*100))
-        weather_forecast['rain_class'] = str(int(weather_forecast['rain_class']))
-        weather_forecast.pop('weather',None)
-        weather_forecast.pop('weather_probabilities',None)
-        return weather_forecast
+        # weather_forecast['temp'] = str(int(weather_forecast['temp']))
+        # weather_forecast['pressure'] = str(int(weather_forecast['pressure']))
+        # weather_forecast['humidity'] = str(int(weather_forecast['humidity']))
+        # weather_forecast['rain_class_probability'] = str(int(weather_forecast['weather_probabilities'][0][weather_forecast['weather'][0]]*100))
+        # weather_forecast['rain_class'] = str(int(weather_forecast['rain_class']))
+        # weather_forecast.pop('weather',None)
+        # weather_forecast.pop('weather_probabilities',None)
+        
+        forecasted_dict = post_process_predictions(weather_forecast[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast']],all_times,config)      
+        return list(forecasted_dict.values())[0]
     
     except Exception as e:        
         logging.error("default forecast "+str(e)+" "+str(e.__traceback__.tb_lineno))
