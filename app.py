@@ -28,7 +28,7 @@ import pandas as pd
 import numpy as np
 from api_authenticator import ApiAuthenticator
 import hashlib
-# import requests
+import requests
 # from requests.packages.urllib3.exceptions import InsecureRequestWarning
 # requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 import warnings
@@ -82,6 +82,7 @@ def gen_report():
         client_data['lat'] = float(client_data['lat'])
         client_data['lng'] = float(client_data['lng'])
         client_data['alt'] = get_elevation(client_data)
+        user_info=dict()
         if "email" in client_data.keys():
             try:
                 user_info = database_handler.query(
@@ -89,11 +90,23 @@ def gen_report():
                 response = database_handler.query(
                     "Tiers", "tier", user_info["Response"]['tier'])
                 client_data['days'] = int(response['Response']['days'])
+                app.logger.info(str(client_data['days']))
             except Exception:
                 client_data['days'] = 2
 
-        else:
+        elif 'days' not in client_data.keys():
             client_data['days'] = 2
+
+        if "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
+         client_data.pop('email')
+         response = requests.post(f"https://{user_info['Response']['server']}.frizzleweather.com/api/generate_report",data=json.dumps(client_data))
+         #response_file = make_response(
+         #   send_file(response.get_data(), as_attachment=True))
+         #response_file.headers['Content-Type'] = 'application/pdf'
+         #response_file.headers['Content-Disposition'] = 'attachment'
+         app.logger.info(get_log(logging.INFO, request, "Passing {user_info['Response']['server']} for generating report"))
+         return (response.content, response.status_code, response.headers.items())
+	
 
         all_days = get_prediction_times(start_day=datetime.now(
         ), interval=None, days=client_data['days'], time_zone="Asia/Kolkata")
@@ -250,12 +263,13 @@ def gen_report():
                 request_info, config["request_info_table"])
         except Exception as e:
             app.logger.error(get_log(
-                logging.INFO, request, f"Unable to generate report,{e},{e.__traceback__.tb_lineno}"))
+                logging.INFO, request, f"Unable to log generate report,{e},{e.__traceback__.tb_lineno}"))
 
         response_file = make_response(
             send_file("report_templates/report.pdf", as_attachment=True))
         response_file.headers['Content-Type'] = 'application/pdf'
         response_file.headers['Content-Disposition'] = 'attachment'
+        app.logger.info(get_log(logging.INFO, request, None))
         return response_file
 
     except Exception as e:
@@ -283,19 +297,30 @@ def get_prediction():
         app.logger.error(get_log(logging.ERROR, request, e.__str__))
         return jsonify({"Status": "Failed", "Reason": str(e)})
 
+    user_info=dict()
     if "email" in client_data.keys():
         try:
             user_info = database_handler.query(
                 config['user_table'], "email", client_data["email"])
             response = database_handler.query(
                 "Tiers", "tier", user_info["Response"]['tier'])
+            #app.logger.info(response)
             client_data['days'] = int(response['Response']['days'])
-        except Exception:
+	    
+        except Exception as e:
+            app.logger.error(str(e)+" "+str(e.__traceback__.tb_lineno))
             client_data['days'] = 2
 
-    else:
-        client_data['days'] = 2
-
+    elif 'days' not in client_data.keys():
+         client_data['days'] = 2	
+	
+    if "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
+         client_data.pop('email')
+         
+         response = requests.post(f"https://{user_info['Response']['server']}.frizzleweather.com/api/get_prediction?type={request_type}",data=json.dumps(client_data))
+         app.logger.info(get_log(logging.INFO, request, f"Passing to {user_info['Response']['server']} for {request_type} "))
+         return response.json()
+    
     forecasted_weather = dict()
     if request_type == "detailed":
 
