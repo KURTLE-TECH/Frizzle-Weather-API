@@ -192,14 +192,14 @@ def predict_weather_batch(times_dataframe,client_data,config):
         times_dataframe['rain_1h'] = model_object.rain_forecast_new(times_dataframe, config)
         
 
-        times_dataframe['rain_class_probability'] = model_object.rain_forecast_prob(times_dataframe, config)         
-        
+        #times_dataframe['rain_class_probability'] = model_object.rain_forecast_prob(times_dataframe, config)         
+        rain_op_probability = model_object.rain_forecast_prob(times_dataframe, config)
              
-        times_dataframe['forecast'] = model_object.weath_forecast(times_dataframe, config)        
-
-
-        
-      
+        weather_class_op = model_object.weath_forecast(times_dataframe, config)        
+	
+        times_dataframe['weather_probability'] = max(model_object.weath_forecast_op(times_dataframe, config)[0])
+        times_dataframe['rain_class_probability'] = rain_op_probability        
+        times_dataframe['forecast'] = weather_class_op
         return times_dataframe
     
     except Exception as e:
@@ -235,7 +235,7 @@ def predict_weather_batch_dashboard(times_dataframe,client_data,config):
         times_dataframe['forecast'] = forecast
 
         forecast_op = model_object.weath_forecast_op(times_dataframe, config) 
-        
+        logging.info(forecast_op)        
 
         times_dataframe['0'] = np.array([i[0] for i in forecast_op])
         times_dataframe['1'] = np.array([i[1] for i in forecast_op])
@@ -362,7 +362,13 @@ def get_default_forecast(time, config, client_data):
         # weather_forecast['rain_class'] = str(int(weather_forecast['rain_class']))
         # weather_forecast.pop('weather',None)
         # weather_forecast.pop('weather_probabilities',None)
-        
+        #print("Before",weather_forecast['rain_class_probability'])
+        weather_op = weather_forecast['weather_probability'].tolist()[0]
+        final_weather_op = float(weather_op)
+        weather_forecast['rain_class_probability'] = final_weather_op
+        #print("After",weather_forecast['rain_class_probability'])
+        #logging.info(weather_forecast['weather_probability'].tolist())
+        #logging.info(type(weather_forecast['weather_probability']))
         forecasted_dict = post_process_predictions(weather_forecast[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast']],all_times,config)      
         return list(forecasted_dict.values())[0]
     
