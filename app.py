@@ -74,7 +74,7 @@ def hello_world():
 
 
 @app.route('/api/generate_report', methods=["GET", "POST"])
-@cross_origin()
+#@cross_origin()
 def gen_report():
     try:
         client_data = loads(request.data)
@@ -539,7 +539,6 @@ def get_past_data():
 
 
 @app.route("/api/get_future_data", methods=["GET", "POST"])
-@cross_origin()
 def get_future_data():
     try:
         client_data = loads(request.data)
@@ -565,8 +564,8 @@ def get_future_data():
 
     else:
         client_data['days'] = 2
-    
-    if user_info and user_info and "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
+    try:
+      if user_info and user_info and "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
          app.logger.info(get_log(logging.INFO, request, "Passing {user_info['Response']['server']} for generating report"))
          client_data.pop('email')
          response = requests.post(f"https://{user_info['Response']['server']}.frizzleweather.com/api/get_future_data",data=json.dumps(client_data))
@@ -576,7 +575,8 @@ def get_future_data():
          #response_file.headers['Content-Disposition'] = 'attachment'
          app.logger.info(get_log(logging.INFO, request, "Received {user_info['Response']['server']} for generating report"))
          return (response.content, response.status_code, response.headers.items())
-
+    except Exception as e:
+         app.logger.info("No user_info found,proceeding")
     try:
 
         all_days = get_prediction_times(start_day=datetime.now(
@@ -623,6 +623,8 @@ def get_future_data():
             app.logger.info("Generating csv ")
             app.logger.info(get_log(logging.INFO, request,"Generated csv report"))
             return send_file(f"temp_files/future-forecast-{uid}.csv", mimetype='text/csv')
+            #response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
+            
 
         csv_file = pd.read_csv(f"temp_files/future-forecast-{uid}.csv")
         excel_file = pd.ExcelWriter(f"temp_files/future-forecast-{uid}.xlsx")
