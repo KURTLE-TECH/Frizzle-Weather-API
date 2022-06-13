@@ -565,6 +565,17 @@ def get_future_data():
 
     else:
         client_data['days'] = 2
+    
+    if user_info and user_info and "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
+         app.logger.info(get_log(logging.INFO, request, "Passing {user_info['Response']['server']} for generating report"))
+         client_data.pop('email')
+         response = requests.post(f"https://{user_info['Response']['server']}.frizzleweather.com/api/get_future_data",data=json.dumps(client_data))
+         #response_file = make_response(
+         #   send_file(response.get_data(), as_attachment=True))
+         #response_file.headers['Content-Type'] = 'application/pdf'
+         #response_file.headers['Content-Disposition'] = 'attachment'
+         app.logger.info(get_log(logging.INFO, request, "Received {user_info['Response']['server']} for generating report"))
+         return (response.content, response.status_code, response.headers.items())
 
     try:
 
@@ -579,6 +590,8 @@ def get_future_data():
                     "%y-%m-%d")] = future.result()
 
         if file_type == "json":
+            app.logger.info("Generated json data")
+            app.logger.info(get_log(logging.INFO, request,"Generated future data json"))
             return jsonify(forecasted_weather)
 
         rain_class_mapping = {
@@ -586,7 +599,8 @@ def get_future_data():
             "1": "0 - 0.5mm",
             "2": "0.5 - 1mm",
             "3": "1 - 5mm",
-            "4": "5 - 10mm"
+            "4": "5 - 10mm",
+            "5": "10mm+"
         }
 
         uid = random.randint(1, 1000)
@@ -606,20 +620,21 @@ def get_future_data():
                     file.write(line)
 
         if file_type == "csv":
+            app.logger.info("Generating csv ")
+            app.logger.info(get_log(logging.INFO, request,"Generated csv report"))
             return send_file(f"temp_files/future-forecast-{uid}.csv", mimetype='text/csv')
 
         csv_file = pd.read_csv(f"temp_files/future-forecast-{uid}.csv")
         excel_file = pd.ExcelWriter(f"temp_files/future-forecast-{uid}.xlsx")
         csv_file.to_excel(excel_file, index=False)
         excel_file.save()
-
+        app.logger.info("Generate xlsx")
+        app.logger.info(get_log(logging.INFO, request,"Generated excel sheet"))
         return send_file(f"temp_files/future-forecast-{uid}.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     except Exception as e:
-        app.logger.error(get_log(logging.ERROR, request, str(
-            e)+" Unable to fetch node data from redis as no connection"))
+        app.logger.error(get_log(logging.ERROR, request, f"{str(e)} {str(e.__traceback__.tb_lineno)}"))
         return {"Status": "failed", "reason": str(e)}
-
 
 @app.route("/api/closest_node", methods=["GET", "POST"])
 @cross_origin()
