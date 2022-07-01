@@ -586,8 +586,7 @@ def get_future_data():
             futures = {e.submit(get_detailed_forecast, day,
                                 config, client_data): day for day in all_days}
             for future in as_completed(futures):
-                forecasted_weather[futures[future].strftime(
-                    "%y-%m-%d")] = future.result()
+                forecasted_weather[futures[future].strftime("%y-%m-%d")] = future.result()
 
         if file_type == "json":
             app.logger.info("Generated json data")
@@ -635,7 +634,7 @@ def get_future_data():
         return send_file(f"temp_files/future-forecast-{uid}.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     except Exception as e:
-        app.logger.error(get_log(logging.ERROR, request, f"{str(e)} {str(e.__traceback__.tb_lineno)}"))
+        app.logger.error(get_log(logging.ERROR, request, f"{str(e)} {str(e.__traceback__.tb_lineno)} {str(e.__traceback__.tb_frame)}"))
         return {"Status": "failed", "reason": str(e)}
 
 @app.route("/api/closest_node", methods=["GET", "POST"])

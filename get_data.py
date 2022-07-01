@@ -212,37 +212,41 @@ def predict_weather_batch_dashboard(times_dataframe,client_data,config):
 
         tempa = model_object.temp_forecast(times_dataframe, config)                
         times_dataframe['temp'] = tempa
+        print("temperature",tempa)
 
         pres= model_object.press_forecast(times_dataframe, config)
         times_dataframe['pressure'] = pres
+        print("pressure",pres)
 
         hum = model_object.humid_class(times_dataframe, config)
         times_dataframe['humidity'] = hum
+        print("humidity",hum)
 
         clouda = model_object.cloud_forecast(times_dataframe, config)  
         times_dataframe['clouds_all'] = clouda   
-        
+        print('clouds',clouda)
 
         raina= model_object.rain_forecast_new(times_dataframe, config)
         times_dataframe['rain_1h'] = raina
-
+        print("rain class",raina)
 
         rain_op_prob = model_object.rain_forecast_prob(times_dataframe, config)
         times_dataframe['rain_class_probability'] = rain_op_prob
-        
+        print('rain class prob',rain_op_prob)
              
         forecast = model_object.weath_forecast(times_dataframe, config)        
         times_dataframe['forecast'] = forecast
+        print("forecast",forecast)
 
         forecast_op = model_object.weath_forecast_op(times_dataframe, config) 
-        logging.info(forecast_op)        
-
+        #logging.info(forecast_op)        
+        print("forecast prob",forecast_op)
         times_dataframe['0'] = np.array([i[0] for i in forecast_op])
         times_dataframe['1'] = np.array([i[1] for i in forecast_op])
-        times_dataframe['2'] = np.array([i[2] for i in forecast_op])
-        times_dataframe['3'] = np.array([i[3] for i in forecast_op])
-        times_dataframe['4'] = np.array([i[4] for i in forecast_op])
-        times_dataframe['5'] = np.array([i[5] for i in forecast_op])
+        #times_dataframe['2'] = np.array([i[2] for i in forecast_op])
+        times_dataframe['3'] = np.array([i[2] for i in forecast_op])
+        #times_dataframe['4'] = np.array([i[4] for i in forecast_op])
+        times_dataframe['5'] = np.array([i[3] for i in forecast_op])
 
 
         return times_dataframe
@@ -266,17 +270,18 @@ def get_detailed_forecast(day,config,client_data):
     all_times_dataframe = pd.DataFrame(all_times,columns=["datetime"])      
     
     all_times_dataframe = pre_process_times(all_times,client_data)       
-    
+    #print("all times", all_times)
+    #print("all times dataframe", all_times_dataframe)
     # all_times_dataframe = all_times_dataframe[['lat','lon','dayofweek', 'quarter', 'month','dayofyear', 'dayofmonth', 'weekofyear','minutes','year','altitude']]
     
     
     #holy grail
     predicted_dataframe = predict_weather_batch_dashboard(all_times_dataframe.drop('datetime',axis=1),client_data,config)   
-    print(predicted_dataframe[['hour','minutes','year','dayofmonth','year','temp','pressure','humidity','clouds_all','rain_1h','0','1','2','3','4','5']])
-    
+    #print(predicted_dataframe[['hour','minutes','year','dayofmonth','year','temp','pressure','humidity','clouds_all','rain_1h','0','1','2','3','4','5']])
+    print("predicted dataframe",predicted_dataframe)
     # df = predicted_dataframe[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast','forecast_probabilities']]                      
     weather_forecast = post_process_predictions_dashboard(predicted_dataframe,all_times,config)
-    # print(weather_forecast)
+    #print(weather_forecast)
 
     
     for time in all_times:
@@ -291,6 +296,7 @@ def get_detailed_forecast(day,config,client_data):
         
 
         # weather_forecast = predict_weather(time,config,client_data)        
+        #print(weather_forecast[time_string]['forecast'])
         day_forecast["condition"][time_string] = weather_forecast[time_string]['forecast']
         day_forecast['forecast'][time_string] = weather_forecast[time_string]['forecast_probabilities']
 
@@ -593,7 +599,7 @@ def post_process_predictions_dashboard(df,all_times,config):
             "rain_class_probability":str(int(df.loc[i,"rain_class_probability"]*100)),
             "forecast":config["weather_condition"][str(df.loc[i,"forecast"])],
             "forecast_probabilities": {
-                config['weather_condition'][str(j)]:f"{df.loc[i,str(j)]:.4f}" for j in range(6)}
+                config['weather_condition'][str(j)]:f"{df.loc[i,str(j)]:.4f}" for j in [0,1,3,5]}
             } for i in range(len(df))}
     
     return forecasted_dict
