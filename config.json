@@ -44,6 +44,10 @@
         "rain_model1": "production_script/models/rain_april_2022_model.sav",
         "rain_model": "production_script/models/Rangit_Dam3_rain_model_9_6_22.sav",
         "weather_model1": "production_script/models/weath_class_april_2022_NR_model.sav",
+
+        "weather_model": "production_script/models/weath_class_7_1_NR_model_Coimb_v2.sav",
+      	"flood_risk":"production_script/models/Flood_Risk_Dam3_28_6_22_model_modified_6.sav",
+      	"custom_rain_model":"production_script/models/Rangit_Dam3_rain_model_28_6_22.sav"
         "weather_model": "production_script/models/Rangit_Dam3_weath_model_9_6_22.sav"
     },
     "user_table":"frizzleusers",

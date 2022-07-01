@@ -14,6 +14,7 @@ import pdfkit
 from PyPDF2 import PdfFileMerger
 from json import loads
 from datetime import datetime, time, tzinfo
+from get_data import flood_risk
 from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log, get_detailed_forecast, get_data_from_redis, get_elevation, get_air_quality,round_to_hour
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
@@ -43,10 +44,12 @@ with open("config.json", "r") as f:
     config['cloud_model'] = joblib.load(config['models']['cloud_model'])
     config['rain_model'] = joblib.load(config['models']['rain_model'])
     config['weather_model'] = joblib.load(config['models']['weather_model'])
+    if 'flood_risk' in config['models'].keys() and 'custom_rain_model' in config['models'].keys():
+        config['flood_risk'] = joblib.load(config['models']['flood_risk'])
+        config['custom_rain_model'] = joblib.load(config['models']['custom_rain_model'])
 
+#redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"], port=config["redis_port"], db=0)
 
-redis_endpoint = redis_cluster_endpoint = redis.Redis(
-    host=config["redis_host"], port=config["redis_port"], db=0)
 models = dict()
 weather_condition = config["weather_condition"]
 database_handler = DynamodbHandler.DynamodbHandler(region="ap-south-1")
@@ -756,6 +759,29 @@ def get_aqi():
 
 
 # load_models()
+
+@app.route("/api/flood_risk", methods=["GET", "POST"])
+def flood_risk_prediction():
+	try:
+	        client_data = loads(request.data)
+        	location = dict()
+        	client_data['lat'] = float(client_data['lat'])
+        	client_data['lng'] = float(client_data['lng'])
+        	client_data['alt'] = get_elevation(client_data)
+	except Exception as e:
+		app.logger.error(e.__str__)
+		app.logger.error(e.__traceback__.tb_lineno)
+	res = "Failed"
+	flood_prediction = None
+	try:
+		flood_prediction = flood_risk(datetime.now(),client_data,config)
+	except Exception as e:
+		app.logger.error("flood_prediction failed")
+		app.logger.error(e.__str__)
+		app.logger.error(e.__traceback__.tb_lineno)
+
+	return flood_prediction,200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True, port=5000)

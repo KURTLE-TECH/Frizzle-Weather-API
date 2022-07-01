@@ -605,3 +605,115 @@ def post_process_predictions_dashboard(df,all_times,config):
     return forecasted_dict
 
 
+def flood_risk(required_time,client_data,config):
+    try:
+        all_times = [required_time]
+        
+        data = pre_process_times(all_times,client_data)
+        logging.info("preprocessed data")
+        logging.info(data)
+        #all_times_dataframe = all_times_dataframe[['lat','lon','dayofweek', 'quarter', 'month','dayofyear', 'dayofmonth', 'weekofyear','minutes','year','altitude']]   
+	
+	#data = predict_weather_batch(all_times_dataframe,client_data,config)
+        
+        data['temp'] = config['temp_model'].predict(data.drop('datetime', axis = 1))
+        logging.info(data['temp'])
+        data['pressure'] = config['press_model'].predict(data.drop('datetime', axis = 1))
+        logging.info(data['pressure'])
+        data['humidity'] = config['humid_class'].predict(data.drop('datetime', axis = 1))
+        logging.info(data['humidity'])
+        data['clouds_all'] = config['cloud_model'].predict(data.drop('datetime', axis = 1))
+        logging.info(data['temp'])
+        logging.info(data['pressure'])
+        logging.info(data['humidity'])
+        logging.info(data['clouds_all'])
+	#post processing of weather attributes
+        data['humidity'] = data['humidity'].replace([0,1,2,3,4,5,6,7],[7.5,22.5,35,45,55,65,75,90])
+
+        data['clouds_all'] = data['clouds_all'].replace([0,1,2,3],[12.5,37.5,62.5,87.5])	
+
+        data_daily_temp = data[['datetime','temp']]
+
+        data_daily_temp = data_daily_temp.set_index('datetime')
+        data_daily_temp_avg = data_daily_temp.resample('D').mean()
+
+        data_daily_temp_max = data_daily_temp.resample('D').max()
+        data_daily_temp_max.rename(columns = {'temp':'temp_max'}, inplace = True)
+
+        data_daily_temp_min = data_daily_temp.resample('D').min()
+        data_daily_temp_min.rename(columns = {'temp':'temp_min'}, inplace = True)
+
+        data_daily_temp1 = data_daily_temp_avg.join([data_daily_temp_max,data_daily_temp_min])
+        logging.info(data_daily_temp1)
+        data_daily_press = data[['datetime','pressure']]
+
+        data_daily_press = data_daily_press.set_index('datetime')
+        data_daily_press_avg = data_daily_press.resample('D').mean()
+
+        data_daily_press_max = data_daily_press.resample('D').max()
+        data_daily_press_max.rename(columns = {'pressure':'pressure_max'}, inplace = True)
+
+        data_daily_press_min = data_daily_press.resample('D').min()
+        data_daily_press_min.rename(columns = {'pressure':'pressure_min'}, inplace = True)
+
+        data_daily_press1 = data_daily_press_avg.join([data_daily_press_max,data_daily_press_min])
+
+        data_daily_hum = data[['datetime','humidity']]
+
+        data_daily_hum = data_daily_hum.set_index('datetime')
+        data_daily_hum_avg = data_daily_hum.resample('D').mean()
+
+        data_daily_hum_max = data_daily_hum.resample('D').max()
+        data_daily_hum_max.rename(columns = {'humidity':'humidity_max'}, inplace = True)
+
+        data_daily_hum_min = data_daily_hum.resample('D').min()
+        data_daily_hum_min.rename(columns = {'humidity':'humidity_min'}, inplace = True)
+
+        data_daily_hum1 = data_daily_hum_avg.join([data_daily_hum_max,data_daily_hum_min])
+        logging.info(data_daily_hum1)
+        data_daily_clouds = data[['datetime','clouds_all']]
+
+        data_daily_clouds = data_daily_clouds.set_index('datetime')
+        data_daily_clouds_avg = data_daily_clouds.resample('D').mean()
+
+        data_daily_clouds_max = data_daily_clouds.resample('D').max()
+        data_daily_clouds_max.rename(columns = {'clouds_all':'clouds_all_max'}, inplace = True)
+
+        data_daily_clouds_min = data_daily_clouds.resample('D').min()
+        data_daily_clouds_min.rename(columns = {'clouds_all':'clouds_all_min'}, inplace = True)
+
+        data_daily_clouds1 = data_daily_clouds_avg.join([data_daily_clouds_max,data_daily_clouds_min])
+        logging.info(data_daily_clouds1)
+        data_all = data_daily_temp1.join([data_daily_press1,data_daily_hum1,data_daily_clouds1])
+
+        data_all = data_all.reset_index()
+        logging.info(data_all)
+        data_all['altitude'] = [client_data['alt']]*data_all.shape[0]
+        data_all['lat'] = [client_data['lat']]*data_all.shape[0]
+        data_all['lon'] = [client_data['lng']]*data_all.shape[0]
+
+        data_all['hour'] = data_all['datetime'].dt.hour
+        data_all['dayofweek'] = data_all['datetime'].dt.dayofweek
+        data_all['quarter'] = data_all['datetime'].dt.quarter
+        data_all['month'] = data_all['datetime'].dt.month
+        data_all['dayofyear'] = data_all['datetime'].dt.dayofyear
+        data_all['dayofmonth'] = data_all['datetime'].dt.day
+        data_all['weekofyear'] = data_all['datetime'].dt.weekofyear
+        data_all['year'] = data_all['datetime'].dt.year
+	# predicting rain
+        data_all['rain_1h'] = config['custom_rain_model'].predict(data_all.drop('datetime', axis = 1))
+
+
+        data_all = data_all.set_index('datetime')
+
+        data_all = data_all.resample('D').sum()
+
+        data_all = data_all[['dayofweek', 'quarter', 'month', 'dayofyear','dayofmonth', 'weekofyear', 'year', 'altitude','rain_1h']]
+        data_all.rename(columns = {'rain_1h':'Rain'},inplace=True)
+        
+        pred = config['flood_risk'].predict(data_all)
+        logging.info(int(pred[0]))
+        return str(int(pred[0]))
+    except Exception as e:
+        logging.error(e)
+        logging.error(e.__traceback__.tb_lineno)       
