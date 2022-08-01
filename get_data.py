@@ -261,7 +261,7 @@ def get_detailed_forecast(day,config,client_data):
     
     # data structure for the prediction   
      
-    day_forecast = {"temperature":{},"pressure":{},"humidity":{},"forecast":{},"rain_class_probability":{},'rain_class':{},"condition":{}}
+    day_forecast = {"clouds":{},"temperature":{},"pressure":{},"humidity":{},"forecast":{},"rain_class_probability":{},'rain_class':{},"condition":{}}
     
     all_times_dataframe = pd.DataFrame(all_times,columns=["datetime"])      
     
@@ -288,8 +288,8 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['humidity'][time_string] = None
         day_forecast['rain_class_probability'][time_string] = None
         day_forecast['rain_class'][time_string] = None
-        
-
+        day_forecast['clouds'][time_string] = None
+        print("clouds",weather_forecast[time_string]['clouds'])
         # weather_forecast = predict_weather(time,config,client_data)        
         day_forecast["condition"][time_string] = weather_forecast[time_string]['forecast']
         day_forecast['forecast'][time_string] = weather_forecast[time_string]['forecast_probabilities']
@@ -297,7 +297,7 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['temperature'][time_string] = str(weather_forecast[time_string]['temp'])
         day_forecast['pressure'][time_string] = str(weather_forecast[time_string]['pressure'])
         day_forecast['humidity'][time_string] = str(weather_forecast[time_string]['humidity'])
-        # day_forecast['clouds'][time_string] = str(int(day_forecast['clouds'][time_string]))
+        day_forecast['clouds'][time_string] = str(int(weather_forecast[time_string]['clouds']))
         day_forecast['rain_class_probability'][time_string] = str(weather_forecast[time_string]['rain_class_probability'])
         day_forecast['rain_class'][time_string] = str(weather_forecast[time_string]['rain_class'])
     # del weather_forecast
