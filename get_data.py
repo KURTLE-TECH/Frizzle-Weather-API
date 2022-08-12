@@ -235,7 +235,7 @@ def predict_weather_batch_dashboard(times_dataframe,client_data,config):
         times_dataframe['forecast'] = forecast
 
         forecast_op = model_object.weath_forecast_op(times_dataframe, config) 
-        logging.info(forecast_op)        
+        #logging.info(forecast_op)        
 
         times_dataframe['0'] = np.array([i[0] for i in forecast_op])
         times_dataframe['1'] = np.array([i[1] for i in forecast_op])
@@ -255,6 +255,7 @@ def get_detailed_forecast(day,config,client_data):
     all_times=list()
     if datetime.now().day == day.day:
         start_time = get_closest_half_hour(datetime.now())
+        
         all_times = get_prediction_times(start_day=start_time,interval=30,days=None,time_zone="Asia/Kolkata")
     else:
         all_times = get_prediction_times(start_day=day,interval=30,days=None,time_zone="Asia/Kolkata")
@@ -272,7 +273,7 @@ def get_detailed_forecast(day,config,client_data):
     
     #holy grail
     predicted_dataframe = predict_weather_batch_dashboard(all_times_dataframe.drop('datetime',axis=1),client_data,config)   
-    print(predicted_dataframe[['hour','minutes','year','dayofmonth','year','temp','pressure','humidity','clouds_all','rain_1h','0','1','2','3','4','5']])
+    #print(predicted_dataframe[['hour','minutes','year','dayofmonth','year','temp','pressure','humidity','clouds_all','rain_1h','0','1','2','3','4','5']])
     
     # df = predicted_dataframe[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast','forecast_probabilities']]                      
     weather_forecast = post_process_predictions_dashboard(predicted_dataframe,all_times,config)
@@ -289,7 +290,7 @@ def get_detailed_forecast(day,config,client_data):
         day_forecast['rain_class_probability'][time_string] = None
         day_forecast['rain_class'][time_string] = None
         day_forecast['clouds'][time_string] = None
-        print("clouds",weather_forecast[time_string]['clouds'])
+        #print("clouds",weather_forecast[time_string]['clouds'])
         # weather_forecast = predict_weather(time,config,client_data)        
         day_forecast["condition"][time_string] = weather_forecast[time_string]['forecast']
         day_forecast['forecast'][time_string] = weather_forecast[time_string]['forecast_probabilities']
@@ -307,6 +308,7 @@ def get_detailed_forecast(day,config,client_data):
     # print(day)
     try:
         sun_data = get_extra_info(client_data['lat'],client_data['lng'],day)
+        #logging.info(sun_data)
         day_forecast["Sunrise"] = sun_data["Sunrise"]
         day_forecast["Sunset"] = sun_data["Sunset"]
         day_forecast["Daylight"] = sun_data["Daylight"]

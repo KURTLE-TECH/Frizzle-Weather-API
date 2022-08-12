@@ -2,7 +2,7 @@ from datetime import datetime, tzinfo
 import requests
 import pytz
 from dateutil import tz
-
+import logging
 
 def get_extra_info(lat,lng,day):
     to_zone = tz.tzlocal()
@@ -16,9 +16,8 @@ def get_extra_info(lat,lng,day):
     # uv_string = "https://api.openuv.io/api/v1/uv?lat={latitude}&lng={longitude}&dt={datetimeinput}".format(latitude=str(lat), longitude=str(lng), datetimeinput=str(day_string_uv))
     sun_string = "https://api.sunrise-sunset.org/json?lat={latitude}&lng={longitude}&date={datetimeinput}&formatted=0".format(latitude=lat, longitude=lng, datetimeinput=day_string)
 
-    sun_data = requests.post(sun_string)
+    sun_data = requests.post(sun_string,verify=False)
     sun_data = sun_data.json()
-
     # uv_data = requests.get(uv_string,headers = { 'content-type': 'application/json','x-access-token': '8d4496a409009e18b9a2e167baf53a12' } )
     # uv_data = uv_data.json()
     # uv_value = uv_data['result']['uv_max']
@@ -39,6 +38,6 @@ def get_extra_info(lat,lng,day):
     #return uv_data
 
 
-# a = get_extra_info(12.9354,77.5350,"2021-09-21")
-# # print('Sunrise Time is: ', a[0],', Sunset time is: ',a[1],', Daylight duration: ',a[2],', UV index:',a[3])
-# print(a)
+a = get_extra_info(12.9354,77.5350,datetime.now())
+#print('Sunrise Time is: ', a[0],', Sunset time is: ',a[1],', Daylight duration: ',a[2],', UV index:',a[3])
+print(a)

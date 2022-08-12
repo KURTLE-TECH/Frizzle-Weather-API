@@ -119,7 +119,7 @@ def gen_report():
                                 config, client_data): day for day in all_days}
             for future in as_completed(futures):
                 forecasted_weather[futures[future].strftime(
-                    "%y-%m-%d")] = future.result()
+                    "%Y-%m-%d")] = future.result()
 
         def format_time(time):
             time_part = time.split(" ")[1]
@@ -340,7 +340,7 @@ def get_prediction():
             for future in as_completed(futures):
                 #print("Future value",future.result())
                 forecasted_weather[futures[future].strftime(
-                    "%y-%m-%d")] = future.result()
+                    "%Y-%m-%d")] = future.result()
         # for day in all_days:
         #     forecasted_weather[day.strftime("%y-%m-%d")] = get_detailed_forecast(day,config,client_data)
 
@@ -353,8 +353,9 @@ def get_prediction():
 
     elif request_type == "default":
         forecasted_weather = defaultdict()
-        prediction_times = get_prediction_times(start_day=get_closest_half_hour(
-            datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata")
+        prediction_times = [datetime.now()]
+        prediction_times.extend(get_prediction_times(start_day=get_closest_half_hour(
+            datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata"))
 
         # all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")  
         # prediction_times = list()           
