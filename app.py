@@ -311,7 +311,7 @@ def get_prediction():
             client_data['days'] = int(response['Response']['days'])
 	    
         except Exception as e:
-            app.logger.error(str(e)+" "+str(e.__traceback__.tb_lineno))
+            app.logger.error(str(e)+"No client info found. Line no:"+str(e.__traceback__.tb_lineno))
             client_data['days'] = 2
 
     elif 'days' not in client_data.keys():
@@ -319,7 +319,7 @@ def get_prediction():
 	
     if "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
          client_data.pop('email')
-         
+         app.logger.info("Routing request")
          response = requests.post(f"https://{user_info['Response']['server']}.frizzleweather.com/api/get_prediction?type={request_type}",data=json.dumps(client_data))
          app.logger.info(get_log(logging.INFO, request, f"Passing to {user_info['Response']['server']} for {request_type} "))
          return response.json()
@@ -354,8 +354,7 @@ def get_prediction():
     elif request_type == "default":
         forecasted_weather = defaultdict()
         prediction_times = [datetime.now()]
-        prediction_times.extend(get_prediction_times(start_day=get_closest_half_hour(
-            datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata"))
+        prediction_times.extend(get_prediction_times(start_day=get_closest_half_hour(datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata"))
 
         # all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")  
         # prediction_times = list()           
@@ -388,21 +387,22 @@ def get_prediction():
 
         return jsonify(forecasted_weather)
 
-    elif request_type == "live":
-        data = forecast("current",client_data,config)
-        #print(data)
-        if data['status']=="success":
-            app.logger.info(get_log(logging.INFO, request, None))
-            request_info = {"time-stamp": datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),
-                            "username": client_data['username'], "lat": f"{client_data['lat']}", 'lng': f"{client_data['lng']}", "type": "default"}
-            _status = database_handler.insert(
-                request_info, config["request_info_table"])
-            time_stamp = list(data['data'].keys())[0]
-            print(time_stamp)
-            return {"condition":data['data'][time_stamp]['forecast'],"temperature":data['data'][time_stamp]['temp']}
-        else:
-            return data
-
+    elif request_type == "landing":
+        forecasted_weather = defaultdict()
+        prediction_times = [datetime.now()]
+        prediction_times.extend(get_prediction_times(start_day=get_closest_half_hour(datetime.now()),interval=30,days=None,time_zone="Asia/Kolkata"))
+        try:
+                with ThreadPoolExecutor(max_workers=2) as e:
+                    futures = {e.submit(get_default_forecast,time,config,client_data):time for time in prediction_times[:4]}
+                    for future in as_completed(futures):
+                        forecasted_weather[futures[future].strftime("%Y-%m-%d %H:%M:%S")] = future.result()
+        except Exception as e:
+                app.logger.error("Line number in landing forecast "+str(e)+" "+str(e.__traceback__.tb_lineno))
+                return "Error in forecasting",500
+        #app.logger.info(get_log(logging.INFO, request, None))
+        #request_info = {"time-stamp": datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),
+        #               "username": client_data['username'], "lat": f"{client_data['lat']}", 'lng': f"{client_data['lng']}", "type": "default"}
+        return jsonify(forecasted_weather)
 
 @app.route("/api/live_prediction", methods=["POST"])
 def live_prediction():
