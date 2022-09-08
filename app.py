@@ -403,6 +403,21 @@ def get_prediction():
         #request_info = {"time-stamp": datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),
         #               "username": client_data['username'], "lat": f"{client_data['lat']}", 'lng': f"{client_data['lng']}", "type": "default"}
         return jsonify(forecasted_weather)
+     
+    elif request_type == "live":
+        data = forecast("current",client_data,config)
+        #print(data)
+        if data['status']=="success":
+            app.logger.info(get_log(logging.INFO, request, None))
+            request_info = {"time-stamp": datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),
+                            "username": client_data['username'], "lat": f"{client_data['lat']}", 'lng': f"{client_data['lng']}", "type": "default"}
+            _status = database_handler.insert(
+                request_info, config["request_info_table"])
+            time_stamp = list(data['data'].keys())[0]
+            print(time_stamp)
+            return {"condition":data['data'][time_stamp]['forecast'],"temperature":data['data'][time_stamp]['temp']}
+        else:
+            return data
 
 @app.route("/api/live_prediction", methods=["POST"])
 def live_prediction():
