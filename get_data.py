@@ -285,7 +285,7 @@ def get_summary_detailed_forecast(day,config,client_data):
         day_forecast[time_string]["forecast"] = weather_forecast[time_string]['forecast']        
         day_forecast[time_string]['temperature'] = str(weather_forecast[time_string]['temp'])    
         try:
-            day_forecast[time_string]['forecast_class_probability'] = str(max([float(i) for i in weather_forecast[time_string]['forecast_probabilities'].values()]))
+            day_forecast[time_string]['forecast_class_probability'] = str(int(max([float(i) for i in weather_forecast[time_string]['forecast_probabilities'].values()])*100))
         except Exception as e:
             logging.error("Error while getting probability of class")
             logging.error(weather_forecast[time_string]['forecast_probabilities'])
@@ -309,47 +309,56 @@ def get_summary_detailed_forecast(day,config,client_data):
     return day_forecast
 
 def generate_report_page(client_data,day_info,config):
-    base_url = os.path.dirname(os.path.realpath(__file__))
-    forecast_data = copy.deepcopy(config['0-11_template'])
-    file_prefix = None
-    all_times = sorted(day_info.keys())
-    for i in all_times:
-        hour = i.split(" ")[1].split(":")[0]
-        forecast_data = forecast_data.replace(f"{{{hour}temp}}", day_info[i]['temperature']+"°C")
-        forecast_data = forecast_data.replace(f"{{{hour}percentage}}", day_info[i]['forecast_class_probability']+"%")
-        forecast_data = forecast_data.replace(f"{{{hour}condition}}", "./img/"+day_info[i]['forecast']+".svg")
-        forecast_data = forecast_data.replace(f"{{{hour}rain}}", config['rain_class'][day_info[i]['rain_class']])
-        forecast_data = forecast_data.replace("{Date_Stamp}",i.strftime("%d-%m-%Y"))
-        file_prefix = f"{client_data['lat']}_{client_data['lng']}_{i.strftime('%Y-%m-%d')}"
+    try:
+        base_url = os.path.dirname(os.path.realpath(__file__))
+        forecast_data = copy.deepcopy(config['0-11_template'])
+        file_prefix = None
+        all_times = sorted(day_info.keys())
+        for i in all_times:
+            logging.info(i)
+            hour = i.split(" ")[1].split(":")[0]
+            logging.info("hour here")
+            logging.info(hour)
+            forecast_data = forecast_data.replace(f"{{{hour}temp}}", day_info[i]['temperature']+"°C")
+            forecast_data = forecast_data.replace(f"{{{hour}percentage}}", day_info[i]['forecast_class_probability']+"%")
+            forecast_data = forecast_data.replace(f"{{{hour}condition}}", "report_templates/img/"+day_info[i]['forecast']+".svg")
+            forecast_data = forecast_data.replace(f"{{{hour}rain}}", config['rain_class'][day_info[i]['rain_class']])
+            forecast_data = forecast_data.replace("{Date_Stamp}",i.split(" ")[0])
+            file_prefix = f"{client_data['lat']}_{client_data['lng']}_{i.split(' ')[0]}"
 
-    forecast_data = forecast_data.replace("{location}",f"{client_data['lat']},{client_data['lng']}")
-    forecast_data = forecast_data.replace("{timestamp}",datetime.now().strftime("%H:%M:%S %d-%m-%Y"))    
+        forecast_data = forecast_data.replace("{location}",f"{client_data['lat']},{client_data['lng']}")
+        forecast_data = forecast_data.replace("{timestamp}",datetime.now().strftime("%H:%M:%S %d-%m-%Y"))    
 
-    html = HTML(string=forecast_data, base_url=base_url)
+        html = HTML(string=forecast_data, base_url=base_url)
+        
+        first_page = f"report_templates/{file_prefix}_0-11.pdf"
+        html.write_pdf(first_page, stylesheets=[CSS('report_templates/home.css')])
+        file_names = list()
+        file_names.append(first_page)
+        forecast_data = copy.deepcopy(config['12-23_template'])
+
+        for i in all_times:
+            hour = i.split(" ")[1].split(":")[0]
+            forecast_data = forecast_data.replace(f"{{{hour}temp}}", day_info[i]['temperature']+"°C")
+            forecast_data = forecast_data.replace(f"{{{hour}percentage}}", day_info[i]['forecast_class_probability']+"%")
+            forecast_data = forecast_data.replace(f"{{{hour}condition}}", "report_templates/img/"+day_info[i]['forecast']+".svg")
+            forecast_data = forecast_data.replace(f"{{{hour}rain}}", config['rain_class'][day_info[i]['rain_class']])
+            forecast_data = forecast_data.replace("{Date_Stamp}",i.split(" ")[0])
+            file_prefix = f"{client_data['lat']}_{client_data['lng']}_{i.split(' ')[0]}"
+        
+        forecast_data = forecast_data.replace("{location}",f"{client_data['lat']},{client_data['lng']}")
+        forecast_data = forecast_data.replace("{timestamp}",datetime.now().strftime("%H:%M:%S %d-%m-%Y"))    
+
+        html = HTML(string=forecast_data, base_url=base_url)
+        second_page = f"report_templates/{file_prefix}_12-23.pdf"
+        html.write_pdf(second_page, stylesheets=[CSS('report_templates/home.css')])
+        file_names.append(second_page)
+        return file_names
     
-    first_page = f"report_templates/{file_prefix}_0-11.pdf"
-    html.write_pdf(first_page, stylesheets=[CSS('report_templates/home.css')])
-    file_names = list()
-    file_names.append(first_page)
-    forecast_data = copy.deepcopy(config['12-23_template'])
-
-    for i in all_times:
-        hour = i.split(" ")[1].split(":")[0]
-        forecast_data = forecast_data.replace(f"{{{hour}temp}}", day_info[i]['temperature']+"°C")
-        forecast_data = forecast_data.replace(f"{{{hour}percentage}}", day_info[i]['forecast_class_probability']+"%")
-        forecast_data = forecast_data.replace(f"{{{hour}condition}}", "./img/"+day_info[i]['forecast']+".svg")
-        forecast_data = forecast_data.replace(f"{{{hour}rain}}", config['rain_class'][day_info[i]['rain_class']])
-        forecast_data = forecast_data.replace("{Date_Stamp}",i.strftime("%d-%m-%Y"))
-        file_prefix = f"{client_data['lat']}_{client_data['lng']}_{i.strftime('%Y-%m-%d')}"
-    
-    forecast_data = forecast_data.replace("{location}",f"{client_data['lat']},{client_data['lng']}")
-    forecast_data = forecast_data.replace("{timestamp}",datetime.now().strftime("%H:%M:%S %d-%m-%Y"))    
-
-    html = HTML(string=forecast_data, base_url=base_url)
-    second_page = f"report_templates/{file_prefix}_12-23.pdf"
-    html.write_pdf(second_page, stylesheets=[CSS('report_templates/home.css')])
-    file_names.append(second_page)
-    return file_names
+    except Exception as e:
+        logging.error(e)
+        logging.error(e.__traceback__.tb_lineno)
+        return f"Failed due to {e}"
 
 def get_detailed_forecast(day,config,client_data):    
     

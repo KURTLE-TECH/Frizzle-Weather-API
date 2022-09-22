@@ -68,7 +68,7 @@ time_stream_client = boto3.client('timestream-query', region_name='us-east-1')
 app = Flask(__name__)
 logging.basicConfig(filename='api_server.log', filemode="a",
                     level=logging.INFO, format=config['log_format'])
-app.logger.setLevel(logging.INFO)
+app.logger.setLevel(logging.ERROR)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
@@ -114,7 +114,8 @@ def summary_report():
          #   send_file(response.get_data(), as_attachment=True))
          #response_file.headers['Content-Type'] = 'application/pdf'
          #response_file.headers['Content-Disposition'] = 'attachment'
-         app.logger.info(get_log(logging.INFO, request, "Passing {user_info['Response']['server']} for generating summary report"))
+         app.logger.info(get_log(logging.INFO, request, None))
+         #print(f"Passing {user_info['Response']['server']} for generating summary report")
          return (response.content, response.status_code, response.headers.items())
 
         all_days = get_prediction_times(start_day=datetime.now(
@@ -124,18 +125,18 @@ def summary_report():
             futures = {e.submit(get_summary_detailed_forecast, day,
                                 config, client_data): day for day in all_days}
             for future in as_completed(futures):
-                forecasted_weather[futures[future]] = future.result()
-
+                forecasted_weather[futures[future].strftime("%d-%m-%Y")] = future.result()
+        logging.info(forecasted_weather)
         file_names = []
         with ThreadPoolExecutor(max_workers=7) as e:
             futures = {e.submit(generate_report_page, client_data,
-                                forecasted_weather[day], config): day for day in all_days}
-            for future in as_completed(futures):
+                                forecasted_weather[day.strftime("%d-%m-%Y")], config): day for day in all_days}
+            for future in as_completed(futures):                
                 file_names.extend(future.result())
         
         merger = PdfFileMerger()        
 
-        for pdf in file_names:
+        for pdf in sorted(file_names):
             merger.append(pdf)
 
         final_file_name = ''.join(random.choices(string.ascii_uppercase +string.digits, k=10))
@@ -147,6 +148,7 @@ def summary_report():
         try:
             _status = database_handler.insert(
                 request_info, config["request_info_table"])
+            app.logger.info("Generated general summary report")
         except Exception as e:
             app.logger.error(get_log(
                 logging.INFO, request, f"Unable to log generate report,{e},{e.__traceback__.tb_lineno}"))
@@ -161,6 +163,7 @@ def summary_report():
     
     except Exception as e:
         app.logger.error(get_log(logging.ERROR, request, e))
+        app.logger.error(e.__traceback__.tb_lineno)
         return jsonify({"Status": "Failed", "Reason": str(e)})
 
 @app.route('/api/generate_report', methods=["GET", "POST"])
