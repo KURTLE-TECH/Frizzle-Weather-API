@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif, 'Rubik';
+      margin: 0%;
+      overflow: hidden;
+    }
+
+    .heading {
+      margin-top: 200px;
+      text-align: center;
+      font-size: 48px;
+    }
+
+    .subheading {
+      text-align: center;
+      font-size: 36px;
+    }
+
+    .forecast-date {
+      text-align: center;
+      font-size: 24px;
+      margin-top: 100px;
+    }
+
+    .container {
+      margin-top: 500px;
+    }
+
+    .banner {
+      display: flex;
+    }
+
+    .contact-icon {
+      margin-bottom: -5px;
+    }
+
+    #navigation {
+      display: flex;
+      position: inherit;
+      justify-content: space-between;
+      font-size: 20px;
+      font-family: 'Rubik Bold';
+      color: white;
+      background-image: linear-gradient(to bottom right, #4861DF, #939FFF);
+
+    }
+
+    #frizzle_logo {
+      /* display: centre; */
+      /* position: relative; */
+      /* margin-left: auto; */
+      /* margin-top: 15px; */
+      /* margin-right: auto; */
+      /* width: 50%; */
+    }
+
+    .image-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 15px;
+      /* height: 80px; */
+    }
+
+    .info-div {
+      text-align: right;
+      vertical-align: middle;
+      /* display: table-cell; */
+      /* align-items: center; */
+      /* text-align: middle; */
+      /* position: absolute; */
+      /* transform: translateY(+50%); */
+      /* position:absolute; */
+      /* width:100%; */
+      /* height:100%; */
+      justify-content: center;
+    }
+
+    .table-data {
+      position: absolute;
+      margin-top: 50px;
+      margin-bottom: 10px;
+      margin-left: 10px;
+      margin-right: -10px;
+      vertical-align: middle;
+    }
+
+    .table {
+      padding: 50px;
+    }
+
+    table {
+      font-family: arial, sans-serif;
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    td,
+    th {
+      border: 2px solid black;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-rows: auto auto auto;
+      grid-gap: 10px;
+      padding-top: 10px;
+      padding-left: 5px;
+      padding-right: 5px;
+    }
+
+    .grid-container>div {
+      background-color: rgba(255, 255, 255, 0.8);
+      text-align: center;
+      padding: 10px 0;
+      font-size: 16px;
+    }
+
+    .col_container {
+      display: flex;
+      justify-content: space-between;
+      grid-template-columns: auto auto;
+      grid-gap: 10px;
+      padding-top: 10px;
+      padding-left: 5px;
+      padding-right: 5px;
+    }
+
+    .col_container>div {
+      background-color: rgba(255, 255, 255, 0.8);
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .footer {
+      position: fixed;
+      text-align: center;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+    }
+
+    .footertext0 {
+      font-weight: 800;
+      text-align: center;
+      color: black;
+      font-size: 16px;
+    }
+
+    .footer1 {
+      background: linear-gradient(to bottom right, #4861DF, #939FFF);
+      display: flex;
+      justify-content: space-between;
+      grid-template-columns: auto auto auto;
+      grid-gap: 10px;
+      padding: 10px;
+    }
+
+    .footertext {
+      font-weight: 800;
+      text-align: center;
+      color: white;
+      font-size: 16px;
+    }
+
+    @media print {
+      div.footer {
+        position: fixed;
+        bottom: 0;
+      }
+
+      * {
+        color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      div.footer1 {
+        background: linear-gradient(to bottom right, #4861DF, #939FFF) !important;
+        color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      div#navigation {
+        background: linear-gradient(to bottom right, #4861DF, #939FFF) !important;
+        color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+  <!-- <link href='https://fonts.googleapis.com/css?family=Rubik' rel='stylesheet'> -->
+  <!-- <link href="./styling.css" rel="stylesheet" /> -->
+  <link href="./home.css" rel="stylesheet" />
+</head>
+
+<body>
+
+  <header id="topnav" class="defaultscroll sticky">
+    <nav id="navigation" style="">
+      <div class="nav-item-1">
+        <div>
+          Weather Forecast
+        </div>
+        <div>
+          {location}
+        </div>
+      </div>
+
+      </div>
+
+      <div id="frizzle_logo" class="image-container">
+        <img src="./img/logo.png" height="50" class="logo-light-mode" alt="">
+
+      </div>
+
+      <div id="" class="" style="">
+        <div class="info-div">
+          +91 8197764422
+          <img class="contact-icon" src="./img/icons8-phone-24.png">
+        </div>
+
+        <div class="info-div">
+          www.frizzleweather.com
+          <img class="contact-icon" src="./img/icons8-website-24.png">
+        </div>
+
+        <div class="info-div">
+          sales@frizzleweather.com
+          <img class="contact-icon" src="./img/icons8-mail-24.png">
+        </div>
+      </div>
+
+    </nav>
+
+  </header>
+
+  <!-- table for weather data -->
+
+
+  <div>
+    <div class="table defaultscroll sticky">
+      <table>
+        <tr>
+          <th></th>
+          <th>0:00</th>
+          <th>1:00</th>
+          <th>2:00</th>
+          <th>3:00</th>
+          <th>4:00</th>
+          <th>5:00</th>
+        </tr>
+        <tr>
+          <td>
+            <div>
+              {Date_Stamp}
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" class="home-image" src="{0condition}" />
+                </div>
+                <div>
+                  <span>{0percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{0temp}</span>
+                  </div>
+                  <div>
+                    <span>{0rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" class="home-image01" src="{7condition}" />
+                </div>
+                <div>
+                  <span>{1percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{1temp}</span>
+                  </div>
+                  <div>
+                    <span>{1rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" class="home-image02" src="{8condition}" />
+                </div>
+                <div>
+                  <span>{2percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{2temp}</span>
+                  </div>
+                  <div>
+                    <span>{2rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" class="home-image03" src="{9condition}" />
+                </div>
+                <div>
+                  <span>{3percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{3temp}</span>
+                  </div>
+                  <div>
+                    <span>{3rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" src="{10condition}" class="home-image04" />
+                </div>
+                <div>
+                  <span>{4percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{4temp}</span>
+                  </div>
+                  <div>
+                    <span>{4rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img class="home-image05" alt="image" src="{11condition}" />
+                </div>
+                <div>
+                  <span>{5percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{5temp}</span>
+                  </div>
+                  <div>
+                    <span>{5rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>       
+        </tr>
+      </table>
+    </div>
+    <div class="table defaultscroll sticky">
+      <table>
+        <tr>
+          <th></th>
+          <th>6:00</th>
+          <th>7:00</th>
+          <th>8:00</th>
+          <th>9:00</th>
+          <th>10:00</th>
+          <th>11:00</th>
+        </tr>
+        <tr>
+          <td>
+            <div>
+              {Date_Stamp}
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" class="home-image" src="{6condition}" />
+                </div>
+                <div>
+                  <span>{6percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{6temp}</span>
+                  </div>
+                  <div>
+                    <span>{6rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" class="home-image01" src="{7condition}" />
+                </div>
+                <div>
+                  <span>{7percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{7temp}</span>
+                  </div>
+                  <div>
+                    <span>{7rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" class="home-image02" src="{8condition}" />
+                </div>
+                <div>
+                  <span>{8percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{8temp}</span>
+                  </div>
+                  <div>
+                    <span>{8rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" class="home-image03" src="{9condition}" />
+                </div>
+                <div>
+                  <span>{9percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{9temp}</span>
+                  </div>
+                  <div>
+                    <span>{9rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img alt="image" src="{10condition}" class="home-image04" />
+                </div>
+                <div>
+                  <span>{10percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{10temp}</span>
+                  </div>
+                  <div>
+                    <span>{10rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="grid-container">
+                <div>
+                  <img class="home-image05" alt="image" src="{11condition}" />
+                </div>
+                <div>
+                  <span>{11percentage}</span>
+                </div>
+                <div class="col_container">
+                  <div>
+                    <span>{11temp}</span>
+                  </div>
+                  <div>
+                    <span>{11rain}mm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  <div class="footer">    
+    <footer class="footer1">
+      <div class="footertext">Report Generated on: {timestamp}</div>
+      <div class="footertext">Frizzle Weather</div>
+      <div class="footertext">Type: HWE Report</div>
+    </footer>
+  </div>
+</body>
+
+</html>

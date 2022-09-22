@@ -14,8 +14,8 @@ import pdfkit
 from PyPDF2 import PdfFileMerger
 from json import loads
 from datetime import datetime, time, tzinfo
-from get_data import flood_risk
-from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log, get_detailed_forecast, get_data_from_redis, get_elevation, get_air_quality,round_to_hour
+from get_data import flood_risk, generate_report_page
+from get_data import forecast, get_closest_half_hour, get_data_from_timestream, get_default_forecast, get_past_data_from_timestream, get_prediction_times, get_closest_node, get_log, get_detailed_forecast, get_data_from_redis, get_elevation, get_air_quality,round_to_hour,get_summary_detailed_forecast
 from database import DynamodbHandler
 #from CloudPercentage import Cloud_Percentage
 import logging
@@ -33,6 +33,8 @@ import requests
 # from requests.packages.urllib3.exceptions import InsecureRequestWarning
 # requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 import warnings
+import string
+
 warnings.filterwarnings("ignore")
 
 with open("config.json", "r") as f:
@@ -47,6 +49,13 @@ with open("config.json", "r") as f:
     if 'flood_risk' in config['models'].keys() and 'custom_rain_model' in config['models'].keys():
         config['flood_risk'] = joblib.load(config['models']['flood_risk'])
         config['custom_rain_model'] = joblib.load(config['models']['custom_rain_model'])
+
+with open(config['general_summary_first_file'],"r") as f:    
+    config['0-11_template']  = f.read()
+
+with open(config['general_summary_second_file'],"r") as f:    
+    config['12-23_template']  = f.read()
+
 
 #redis_endpoint = redis_cluster_endpoint = redis.Redis(host=config["redis_host"], port=config["redis_port"], db=0)
 
@@ -75,6 +84,84 @@ def hello_world():
         app.logger.error(get_log(logging.ERROR, request, "Wrong method"))
         return "Root method uses only GET, Please try again!"
 
+@app.route("/api/summary_report",methods=["POST"])
+def summary_report():
+    try:
+        client_data = loads(request.data)
+        location = dict()
+        client_data['lat'] = float(client_data['lat'])
+        client_data['lng'] = float(client_data['lng'])
+        client_data['alt'] = get_elevation(client_data)
+        user_info=dict()
+        if "email" in client_data.keys():
+            try:
+                user_info = database_handler.query(
+                    config['user_table'], "email", client_data["email"])
+                response = database_handler.query(
+                    "Tiers", "tier", user_info["Response"]['tier'])
+                client_data['days'] = int(response['Response']['days'])
+                app.logger.info(str(client_data['days']))
+            except Exception:
+                client_data['days'] = 2
+
+        elif 'days' not in client_data.keys():
+            client_data['days'] = 2
+
+        if "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
+         client_data.pop('email')
+         response = requests.post(f"https://{user_info['Response']['server']}.frizzleweather.com/api/summary_report",data=json.dumps(client_data))
+         #response_file = make_response(
+         #   send_file(response.get_data(), as_attachment=True))
+         #response_file.headers['Content-Type'] = 'application/pdf'
+         #response_file.headers['Content-Disposition'] = 'attachment'
+         app.logger.info(get_log(logging.INFO, request, "Passing {user_info['Response']['server']} for generating summary report"))
+         return (response.content, response.status_code, response.headers.items())
+
+        all_days = get_prediction_times(start_day=datetime.now(
+        ), interval=None, days=client_data['days'], time_zone="Asia/Kolkata")
+        forecasted_weather = dict()
+        with ThreadPoolExecutor(max_workers=7) as e:
+            futures = {e.submit(get_summary_detailed_forecast, day,
+                                config, client_data): day for day in all_days}
+            for future in as_completed(futures):
+                forecasted_weather[futures[future]] = future.result()
+
+        file_names = []
+        with ThreadPoolExecutor(max_workers=7) as e:
+            futures = {e.submit(generate_report_page, client_data,
+                                forecasted_weather[day], config): day for day in all_days}
+            for future in as_completed(futures):
+                file_names.extend(future.result())
+        
+        merger = PdfFileMerger()        
+
+        for pdf in file_names:
+            merger.append(pdf)
+
+        final_file_name = ''.join(random.choices(string.ascii_uppercase +string.digits, k=10))
+        merger.write(f"report_templates/{final_file_name}.pdf")
+        merger.close()
+
+        request_info = {"time-stamp": datetime.now().strftime(format="%Y-%m-%d %H:%M:%S"),
+                        "username": client_data['username'], "lat": client_data['lat'], 'lng': client_data['lng'], "type": "general_summary_report_generation"}
+        try:
+            _status = database_handler.insert(
+                request_info, config["request_info_table"])
+        except Exception as e:
+            app.logger.error(get_log(
+                logging.INFO, request, f"Unable to log generate report,{e},{e.__traceback__.tb_lineno}"))
+
+        response_file = make_response(
+            send_file(f"report_templates/{final_file_name}.pdf", as_attachment=True))
+        response_file.headers['Content-Type'] = 'application/pdf'
+        response_file.headers['Content-Disposition'] = 'attachment'
+        app.logger.info(get_log(logging.INFO, request, None))
+        return response_file
+
+    
+    except Exception as e:
+        app.logger.error(get_log(logging.ERROR, request, e))
+        return jsonify({"Status": "Failed", "Reason": str(e)})
 
 @app.route('/api/generate_report', methods=["GET", "POST"])
 #@cross_origin()

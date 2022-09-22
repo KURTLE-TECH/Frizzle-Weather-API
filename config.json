@@ -49,7 +49,10 @@
 	"custom_rain_model":"production_script/models/Rangit_Dam3_rain_model_28_6_22.sav"
     },
     "user_table":"frizzleusers",
-    "api_table":"API-Keys"
+    "api_table":"API-Keys",
+    "general_summary_first_file":"report_templates/0-11_template.html",
+    "general_summary_second_file":"report_templates/12-23_template.html"
+    
 
 
 }

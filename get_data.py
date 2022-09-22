@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta,timezone
 import logging
+from time import strftime
 # from pyexpat import model
 import pytz
 from database import DynamodbHandler as db
@@ -22,7 +23,8 @@ from sun_data import get_extra_info
 from timestream import run_query
 from concurrent.futures import ThreadPoolExecutor,as_completed
 import aqi
-
+from weasyprint import HTML,CSS
+import os
 
 def get_prediction_times(**kwargs):
     try:
@@ -249,6 +251,105 @@ def predict_weather_batch_dashboard(times_dataframe,client_data,config):
     except Exception as e:
         logging.error(str(e)+f"{ e.__traceback__.tb_lineno}")
         return {}
+
+def get_summary_detailed_forecast(day,config,client_data):            
+    all_times = get_prediction_times(start_day=day,interval=60,days=None,time_zone="Asia/Kolkata")
+    
+    # data structure for the prediction   
+     
+    day_forecast = {i.strftime("%Y-%m-%d %H:%M:%S"):{} for i in all_times}
+    
+    all_times_dataframe = pd.DataFrame(all_times,columns=["datetime"])      
+    
+    all_times_dataframe = pre_process_times(all_times,client_data)       
+    
+    # all_times_dataframe = all_times_dataframe[['lat','lon','dayofweek', 'quarter', 'month','dayofyear', 'dayofmonth', 'weekofyear','minutes','year','altitude']]
+    
+    
+    #holy grail
+    predicted_dataframe = predict_weather_batch_dashboard(all_times_dataframe.drop('datetime',axis=1),client_data,config)   
+    #print(predicted_dataframe[['hour','minutes','year','dayofmonth','year','temp','pressure','humidity','clouds_all','rain_1h','0','1','2','3','4','5']])
+    
+    # df = predicted_dataframe[['temp','pressure','humidity','clouds_all','rain_1h','rain_class_probability','forecast','forecast_probabilities']]                      
+    weather_forecast = post_process_predictions_dashboard(predicted_dataframe,all_times,config)
+    # print(weather_forecast)
+
+    
+    for time in all_times:
+        time_string = time.strftime(format="%Y-%m-%d %H:%M:%S")
+        day_forecast[time_string]['forecast'] = None        
+        day_forecast[time_string]['temperature'] = None
+        day_forecast[time_string]['forecast_class_probability'] = None
+        day_forecast[time_string]['rain_class'] = None
+                
+        day_forecast[time_string]["forecast"] = weather_forecast[time_string]['forecast']        
+        day_forecast[time_string]['temperature'] = str(weather_forecast[time_string]['temp'])    
+        try:
+            day_forecast[time_string]['forecast_class_probability'] = str(max([float(i) for i in weather_forecast[time_string]['forecast_probabilities'].values()]))
+        except Exception as e:
+            logging.error("Error while getting probability of class")
+            logging.error(weather_forecast[time_string]['forecast_probabilities'])
+        day_forecast[time_string]['rain_class'] = str(weather_forecast[time_string]['rain_class'])
+    # del weather_forecast
+
+    # day_forecast["feels like"] = str(random.randrange(0,50))
+    # day_forecast["dew_point"] = str(random.randrange(0,50))
+    # print(day)
+    # try:
+    #     sun_data = get_extra_info(client_data['lat'],client_data['lng'],day)
+    #     #logging.info(sun_data)
+    #     day_forecast["Sunrise"] = sun_data["Sunrise"]
+    #     day_forecast["Sunset"] = sun_data["Sunset"]
+    #     day_forecast["Daylight"] = sun_data["Daylight"]
+    # except Exception:
+    #     day_forecast["Sunrise"] = "NA"
+    #     day_forecast["Sunset"] = "NA"
+    #     day_forecast["Daylight"] = "NA"        
+       
+    return day_forecast
+
+def generate_report_page(client_data,day_info,config):
+    base_url = os.path.dirname(os.path.realpath(__file__))
+    forecast_data = copy.deepcopy(config['0-11_template'])
+    file_prefix = None
+    all_times = sorted(day_info.keys())
+    for i in all_times:
+        hour = i.split(" ")[1].split(":")[0]
+        forecast_data = forecast_data.replace(f"{{{hour}temp}}", day_info[i]['temperature']+"°C")
+        forecast_data = forecast_data.replace(f"{{{hour}percentage}}", day_info[i]['forecast_class_probability']+"%")
+        forecast_data = forecast_data.replace(f"{{{hour}condition}}", "./img/"+day_info[i]['forecast']+".svg")
+        forecast_data = forecast_data.replace(f"{{{hour}rain}}", config['rain_class'][day_info[i]['rain_class']])
+        forecast_data = forecast_data.replace("{Date_Stamp}",i.strftime("%d-%m-%Y"))
+        file_prefix = f"{client_data['lat']}_{client_data['lng']}_{i.strftime('%Y-%m-%d')}"
+
+    forecast_data = forecast_data.replace("{location}",f"{client_data['lat']},{client_data['lng']}")
+    forecast_data = forecast_data.replace("{timestamp}",datetime.now().strftime("%H:%M:%S %d-%m-%Y"))    
+
+    html = HTML(string=forecast_data, base_url=base_url)
+    
+    first_page = f"report_templates/{file_prefix}_0-11.pdf"
+    html.write_pdf(first_page, stylesheets=[CSS('report_templates/home.css')])
+    file_names = list()
+    file_names.append(first_page)
+    forecast_data = copy.deepcopy(config['12-23_template'])
+
+    for i in all_times:
+        hour = i.split(" ")[1].split(":")[0]
+        forecast_data = forecast_data.replace(f"{{{hour}temp}}", day_info[i]['temperature']+"°C")
+        forecast_data = forecast_data.replace(f"{{{hour}percentage}}", day_info[i]['forecast_class_probability']+"%")
+        forecast_data = forecast_data.replace(f"{{{hour}condition}}", "./img/"+day_info[i]['forecast']+".svg")
+        forecast_data = forecast_data.replace(f"{{{hour}rain}}", config['rain_class'][day_info[i]['rain_class']])
+        forecast_data = forecast_data.replace("{Date_Stamp}",i.strftime("%d-%m-%Y"))
+        file_prefix = f"{client_data['lat']}_{client_data['lng']}_{i.strftime('%Y-%m-%d')}"
+    
+    forecast_data = forecast_data.replace("{location}",f"{client_data['lat']},{client_data['lng']}")
+    forecast_data = forecast_data.replace("{timestamp}",datetime.now().strftime("%H:%M:%S %d-%m-%Y"))    
+
+    html = HTML(string=forecast_data, base_url=base_url)
+    second_page = f"report_templates/{file_prefix}_12-23.pdf"
+    html.write_pdf(second_page, stylesheets=[CSS('report_templates/home.css')])
+    file_names.append(second_page)
+    return file_names
 
 def get_detailed_forecast(day,config,client_data):    
     
