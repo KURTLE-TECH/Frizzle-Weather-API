@@ -78,6 +78,7 @@
       /* width:100%; */
       /* height:100%; */
       justify-content: center;
+      margin: 10px 10px;
     }
 
     .table-data {
@@ -206,8 +207,9 @@
   <header id="topnav" class="defaultscroll sticky">
     <nav id="navigation" style="">
       <div class="nav-item-1">
+        <br>
         <div>
-          Weather Forecast
+          Weather Forecast for
         </div>
         <div>
           {location}
@@ -270,7 +272,7 @@
                   <img alt="image" class="home-image" src="{00condition}" />
                 </div>
                 <div>
-                  <span>{00percentage}</span>
+                  <span><b>{00percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -290,7 +292,7 @@
                   <img alt="image" class="home-image01" src="{01condition}" />
                 </div>
                 <div>
-                  <span>{01percentage}</span>
+                  <span><b>{01percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -310,7 +312,7 @@
                   <img alt="image" class="home-image02" src="{02condition}" />
                 </div>
                 <div>
-                  <span>{02percentage}</span>
+                  <span><b>{02percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -330,7 +332,7 @@
                   <img alt="image" class="home-image03" src="{03condition}" />
                 </div>
                 <div>
-                  <span>{03percentage}</span>
+                  <span><b>{03percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -350,7 +352,7 @@
                   <img alt="image" src="{04condition}" class="home-image04" />
                 </div>
                 <div>
-                  <span>{04percentage}</span>
+                  <span><b>{04percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -370,7 +372,7 @@
                   <img class="home-image05" alt="image" src="{05condition}" />
                 </div>
                 <div>
-                  <span>{05percentage}</span>
+                  <span><b>{05percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -410,7 +412,7 @@
                   <img alt="image" class="home-image" src="{06condition}" />
                 </div>
                 <div>
-                  <span>{06percentage}</span>
+                  <span><b>{06percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -430,7 +432,7 @@
                   <img alt="image" class="home-image01" src="{07condition}" />
                 </div>
                 <div>
-                  <span>{07percentage}</span>
+                  <span><b>{07percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -450,7 +452,7 @@
                   <img alt="image" class="home-image02" src="{08condition}" />
                 </div>
                 <div>
-                  <span>{08percentage}</span>
+                  <span><b>{08percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -470,7 +472,7 @@
                   <img alt="image" class="home-image03" src="{09condition}" />
                 </div>
                 <div>
-                  <span>{09percentage}</span>
+                  <span><b>{09percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -490,7 +492,7 @@
                   <img alt="image" src="{10condition}" class="home-image04" />
                 </div>
                 <div>
-                  <span>{10percentage}</span>
+                  <span><b>{10percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -510,7 +512,7 @@
                   <img class="home-image05" alt="image" src="{11condition}" />
                 </div>
                 <div>
-                  <span>{11percentage}</span>
+                  <span><b>{11percentage}</b></span>
                 </div>
                 <div class="col_container">
                   <div>
@@ -529,9 +531,9 @@
   </div>
   <div class="footer">    
     <footer class="footer1">
-      <div class="footertext">Report Generated on: {timestamp}</div>
-      <div class="footertext">Frizzle Weather</div>
-      <div class="footertext">Type: HWE Report</div>
+      <div class="footertext"><br>Report Generated on: {timestamp}</div>
+      <img src="./report_templates/img/FWS.png" height="45" width = "200" class="logo-light-mode" alt="">
+      <div class="footertext"><br>Type: HWE Report</div>
     </footer>
   </div>
 </body>
