@@ -34,19 +34,22 @@
     "secret_access_key": "rlZCkFhTRHtAo1zyd5RLvzohF0/MZ9rQENelmefm",
     "models": {
         "temperature_model1": "production_script/models/temp_model_april.sav",
-        "temperature_model": "production_script/models/temp_20_12_NR_model.sav",
+        "temperature_model": "production_script/south_models/temp_model.sav",
         "pressure_model1": "production_script/models/press_model_april_2022-001.sav",
-        "pressure_model": "production_script/models/press_06_01_22_nonreal_time_model.sav",
+        "pressure_model": "production_script/south_models/press_model.sav",
         "humidity_model1": "production_script/models/hum_8_class_05_04_2022_NR_model.sav",        
-        "humidity_model": "production_script/models/hum_8_class_07_01_NR_model.sav",        
+        "humidity_model": "production_script/south_models/hum_model_1.sav",        
         "cloud_model1": "production_script/models/clouds_class_april_model-002.sav",        
-        "cloud_model": "production_script/models/clouds_class_7_1_NR_model_v3.sav",        
+        "cloud_model": "production_script/south_models/clouds_model.sav",        
         "rain_model1": "production_script/models/rain_april_2022_model.sav",
-        "rain_model": "production_script/models/rain_class_7_1_NR_model_Coimb_v2.sav",
+        "rain_model": "production_script/south_models/rain_model.sav",
         "weather_model1": "production_script/models/weath_class_april_2022_NR_model.sav",
-        "weather_model": "production_script/models/weath_class_7_1_NR_model_Coimb_v2.sav",
-	"flood_risk":"production_script/models/Flood_Risk_Dam3_28_6_22_model_modified_6.sav",
-	"custom_rain_model":"production_script/models/Rangit_Dam3_rain_model_28_6_22.sav"
+        "weather_model": "production_script/south_models/weather_description_model.sav"	
+    },
+    "realtime-models":{
+        "temperature_model":"production_script/realtime-models/temp_rt_model_namdharis_20_10_22.json",
+        "pressure_model":"production_script/realtime-models/press_rt_model_namdharis_11_10_22.json",
+        "humidity_model":"production_script/realtime-models/hum_rt_model_namdharis_11_10_22.json"
     },
     "user_table":"frizzleusers",
     "api_table":"API-Keys",

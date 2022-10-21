@@ -38,6 +38,6 @@ def get_extra_info(lat,lng,day):
     #return uv_data
 
 
-a = get_extra_info(12.9354,77.5350,datetime.now())
+# a = get_extra_info(12.9354,77.5350,datetime.now())
 #print('Sunrise Time is: ', a[0],', Sunset time is: ',a[1],', Daylight duration: ',a[2],', UV index:',a[3])
-print(a)
+# print(a)

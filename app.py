@@ -34,6 +34,8 @@ import requests
 # requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 import warnings
 import string
+from prophet import Prophet
+from prophet.serialize import model_to_json, model_from_json
 
 warnings.filterwarnings("ignore")
 
@@ -49,7 +51,17 @@ with open("config.json", "r") as f:
     if 'flood_risk' in config['models'].keys() and 'custom_rain_model' in config['models'].keys():
         config['flood_risk'] = joblib.load(config['models']['flood_risk'])
         config['custom_rain_model'] = joblib.load(config['models']['custom_rain_model'])
-
+    
+    with open(config['realtime-models']["temperature_model"]) as f:
+        config["realtime_temp_model"] = model_from_json(f.read())
+   
+    with open(config['realtime-models']["pressure_model"]) as f:
+        config["realtime_pres_model"] = model_from_json(f.read())
+    
+    with open(config['realtime-models']["humidity_model"]) as f:
+        config["realtime_hum_model"] = model_from_json(f.read())
+    
+     
 with open(config['general_summary_first_file'],"r") as f:    
     config['0-11_template']  = f.read()
 
@@ -190,15 +202,15 @@ def gen_report():
         elif 'days' not in client_data.keys():
             client_data['days'] = 2
 
-        if "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
-         client_data.pop('email')
-         response = requests.post(f"https://{user_info['Response']['server']}.frizzleweather.com/api/generate_report",data=json.dumps(client_data))
-         #response_file = make_response(
-         #   send_file(response.get_data(), as_attachment=True))
-         #response_file.headers['Content-Type'] = 'application/pdf'
-         #response_file.headers['Content-Disposition'] = 'attachment'
-         app.logger.info(get_log(logging.INFO, request, "Passing {user_info['Response']['server']} for generating report"))
-         return (response.content, response.status_code, response.headers.items())
+        # if "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
+        #  client_data.pop('email')
+        #  response = requests.post(f"https://{user_info['Response']['server']}.frizzleweather.com/api/generate_report",data=json.dumps(client_data))
+        #  #response_file = make_response(
+        #  #   send_file(response.get_data(), as_attachment=True))
+        #  #response_file.headers['Content-Type'] = 'application/pdf'
+        #  #response_file.headers['Content-Disposition'] = 'attachment'
+        #  app.logger.info(get_log(logging.INFO, request, "Passing {user_info['Response']['server']} for generating report"))
+        #  return (response.content, response.status_code, response.headers.items())
 	
 
         all_days = get_prediction_times(start_day=datetime.now(
@@ -208,8 +220,7 @@ def gen_report():
             futures = {e.submit(get_detailed_forecast, day,
                                 config, client_data): day for day in all_days}
             for future in as_completed(futures):
-                forecasted_weather[futures[future].strftime(
-                    "%Y-%m-%d")] = future.result()
+                forecasted_weather[futures[future].strftime("%Y-%m-%d")] = future.result()
 
         def format_time(time):
             time_part = time.split(" ")[1]
@@ -366,6 +377,7 @@ def gen_report():
         return response_file
 
     except Exception as e:
+        app.logger.error(e.__traceback__.tb_lineno)
         app.logger.error(get_log(logging.ERROR, request, e))
         return jsonify({"Status": "Failed", "Reason": str(e)})
 
@@ -382,6 +394,7 @@ def get_prediction():
         client_data['lng'] = float(client_data['lng'])
         # client_data['alt'] = float(client_data['elevation'])
         client_data['alt'] = get_elevation(client_data)
+        logging.info(client_data['alt'])
         if 'username' not in client_data.keys():
             client_data['username'] = "unknown"
         # print(client_data)
@@ -417,11 +430,10 @@ def get_prediction():
     forecasted_weather = dict()
     if request_type == "detailed":
 
-        # get the next client_data['days'] days
-        # print("Start day calculation",datetime.now())
+        # get the next client_data['days'] days        
         all_days = get_prediction_times(start_day=datetime.now(
         ), interval=None, days=client_data["days"], time_zone="Asia/Kolkata")
-        # print("End day calculation",datetime.now())
+        
         # get the times for each day
         forecasted_weather = dict()
         with ThreadPoolExecutor(max_workers=client_data["days"]) as e:
@@ -443,8 +455,8 @@ def get_prediction():
 
     elif request_type == "default":
         forecasted_weather = defaultdict()
-        prediction_times = [datetime.now()]
-        prediction_times.extend(get_prediction_times(start_day=get_closest_half_hour(datetime.now()), interval=30, days=None, time_zone="Asia/Kolkata"))
+        prediction_times = [datetime.now().replace(second=0,microsecond=0,tzinfo=pytz.timezone("Asia/Kolkata"))]
+        prediction_times.extend(get_prediction_times(start_day=get_closest_half_hour(datetime.now().replace(second=0,microsecond=0)), interval=30, days=None, time_zone="Asia/Kolkata"))
 
         # all_days = get_prediction_times(start_day = datetime.now(),interval=None,days=client_data["days"],time_zone="Asia/Kolkata")  
         # prediction_times = list()           
@@ -457,15 +469,13 @@ def get_prediction():
                 # all_times.extend(get_prediction_times(start_day = day,interval=60,days=None,time_zone="Asia/Kolkata"))            
 
         try:
-            with ThreadPoolExecutor(max_workers=2) as e:
-                futures = {e.submit(get_default_forecast, time, config,
-                                    client_data): time for time in prediction_times}
-                for future in as_completed(futures):
-                    # print("Future value",futures[future])
-                    forecasted_weather[futures[future].strftime(
-                        "%Y-%m-%d %H:%M:%S")] = future.result()
+            # with ThreadPoolExecutor(max_workers=6) as e:
+            #     futures = {e.submit(get_default_forecast, time, config,
+            #                         client_data): time for time in prediction_times}
+            forecasted_weather = get_default_forecast(prediction_times,config,client_data)
+                
         except Exception as e:
-            app.logger.error("Line number "+e.__traceback__.tb_lineno)            
+            app.logger.error("Line number "+str(e.__traceback__.tb_lineno))            
             # print(e.__traceback__.)
             app.logger.error(get_log(logging.ERROR, request, str(e)))
             return jsonify({"Status": "Failed", "Reason": str(e)})
@@ -479,13 +489,10 @@ def get_prediction():
 
     elif request_type == "landing":
         forecasted_weather = defaultdict()
-        prediction_times = [datetime.now()]
-        prediction_times.extend(get_prediction_times(start_day=get_closest_half_hour(datetime.now()),interval=30,days=None,time_zone="Asia/Kolkata"))
+        prediction_times = [datetime.now().replace(second=0,microsecond=0,tzinfo=pytz.timezone("Asia/Kolkata"))]
+        prediction_times.extend(get_prediction_times(start_day=get_closest_half_hour(datetime.now().replace(second=0,microsecond=0)), interval=30, days=None, time_zone="Asia/Kolkata"))
         try:
-                with ThreadPoolExecutor(max_workers=2) as e:
-                    futures = {e.submit(get_default_forecast,time,config,client_data):time for time in prediction_times[:4]}
-                    for future in as_completed(futures):
-                        forecasted_weather[futures[future].strftime("%Y-%m-%d %H:%M:%S")] = future.result()
+                forecasted_weather = get_default_forecast(prediction_times[:4],config,client_data)
         except Exception as e:
                 app.logger.error("Line number in landing forecast "+str(e)+" "+str(e.__traceback__.tb_lineno))
                 return "Error in forecasting",500
@@ -665,14 +672,15 @@ def get_future_data():
         try:
             user_info = database_handler.query(
                 config['user_table'], "email", client_data["email"])
+            logging.info(user_info)
             response = database_handler.query(
                 "Tiers", "tier", user_info["Response"]['tier'])
             client_data['days'] = int(response['Response']['days'])
         except Exception:
             client_data['days'] = 2
 
-    else:
-        client_data['days'] = 2
+    elif 'days' not in client_data.keys():
+         client_data['days'] = 2	
     try:
       if user_info and user_info and "Response" in user_info.keys() and 'server' in user_info["Response"].keys():
          app.logger.info(get_log(logging.INFO, request, "Passing {user_info['Response']['server']} for generating report"))
@@ -685,7 +693,7 @@ def get_future_data():
          app.logger.info(get_log(logging.INFO, request, "Received {user_info['Response']['server']} for generating report"))
          return (response.content, response.status_code, response.headers.items())
     except Exception as e:
-         app.logger.info("No user_info found,proceeding")
+         app.logger.info("No user_info found,proceeding")    
     try:
 
         all_days = get_prediction_times(start_day=datetime.now(
